@@ -5,8 +5,15 @@ import midtransClient from 'midtrans-client';
 
 export async function GET(request) {
   try {
+    // Debug log for Vercel
+    console.log('[DEBUG][GET] Headers:', JSON.stringify(Object.fromEntries(request.headers.entries())));
+    console.log('[DEBUG][GET] MIDTRANS_MODE:', process.env.MIDTRANS_MODE);
+    console.log('[DEBUG][GET] MIDTRANS_SANDBOX_SERVER_KEY:', process.env.MIDTRANS_SANDBOX_SERVER_KEY);
+    console.log('[DEBUG][GET] MIDTRANS_PRODUCTION_SERVER_KEY:', process.env.MIDTRANS_PRODUCTION_SERVER_KEY);
+
     // Verify buyer token
     const auth = await verifyBuyerToken(request);
+    console.log('[DEBUG][GET] verifyBuyerToken result:', auth);
     
     if (auth.error) {
       return createErrorResponse(auth.error, auth.status);
@@ -59,8 +66,15 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    // Debug log for Vercel
+    console.log('[DEBUG][POST] Headers:', JSON.stringify(Object.fromEntries(request.headers.entries())));
+    console.log('[DEBUG][POST] MIDTRANS_MODE:', process.env.MIDTRANS_MODE);
+    console.log('[DEBUG][POST] MIDTRANS_SANDBOX_SERVER_KEY:', process.env.MIDTRANS_SANDBOX_SERVER_KEY);
+    console.log('[DEBUG][POST] MIDTRANS_PRODUCTION_SERVER_KEY:', process.env.MIDTRANS_PRODUCTION_SERVER_KEY);
+
     // Verify buyer token
     const auth = await verifyBuyerToken(request);
+    console.log('[DEBUG][POST] verifyBuyerToken result:', auth);
     
     if (auth.error) {
       return createErrorResponse(auth.error, auth.status);
