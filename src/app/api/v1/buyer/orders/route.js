@@ -60,6 +60,42 @@ export async function GET(request) {
       } else {
         order.paymentStatus = order.status || 'pending';
       }
+
+      // Map status to statusProgress for frontend
+      // Default: waiting_approval -> processing -> delivery -> completed
+      let statusProgress = 'waiting_approval';
+      if (order.status === 'pending' || order.paymentStatus === 'pending') {
+        statusProgress = 'waiting_approval';
+      } else if (
+        order.status === 'processing' ||
+        order.status === 'diproses' ||
+        order.paymentStatus === 'processing'
+      ) {
+        statusProgress = 'processing';
+      } else if (
+        order.status === 'delivery' ||
+        order.status === 'pengiriman' ||
+        order.paymentStatus === 'delivery'
+      ) {
+        statusProgress = 'delivery';
+      } else if (
+        order.status === 'completed' ||
+        order.status === 'selesai' ||
+        order.paymentStatus === 'settlement' ||
+        order.paymentStatus === 'success' ||
+        order.paymentStatus === 'completed'
+      ) {
+        statusProgress = 'completed';
+      } else if (
+        order.status === 'cancelled' ||
+        order.status === 'dibatalkan' ||
+        order.paymentStatus === 'cancel' ||
+        order.paymentStatus === 'failed' ||
+        order.paymentStatus === 'expire'
+      ) {
+        statusProgress = 'cancelled';
+      }
+      order.statusProgress = statusProgress;
       orders.push(order);
     }
 

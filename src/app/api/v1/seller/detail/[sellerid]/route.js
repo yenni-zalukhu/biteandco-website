@@ -40,7 +40,8 @@ export async function GET(req, context) {
 
     const seller = {
       id: docSnap.id,
-      name: data.name || data.outletName || null,
+      outletName: data.outletName || data.name || null,
+      storeIcon: data.storeIcon || data.logo || null,
       kelurahan: data.kelurahan || (data.address && data.address.kelurahan) || null,
       type: data.type || null,
       rating: data.rating || 0,
@@ -50,7 +51,7 @@ export async function GET(req, context) {
       banner: data.banner || data.storeBanner || null, // For compatibility
     };
     console.log('Seller detail fetched:', seller);
-    return withCORSHeaders(NextResponse.json({ seller }));
+    return withCORSHeaders(NextResponse.json(seller));
   } catch (error) {
     let debugInfo = {
       message: error.message,
