@@ -1,6 +1,7 @@
 // Next.js 15 App Router API route for seller detail
 import { db } from '@/firebase/configure';
 import { withCORSHeaders, handleOptions } from '@/lib/cors';
+import { NextResponse } from 'next/server';
 
 export async function OPTIONS() {
   return handleOptions();
