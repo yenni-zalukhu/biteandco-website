@@ -1,0 +1,1 @@
+dont use firebase/storage, use import { db, storage } from '@/firebase/configure' instead

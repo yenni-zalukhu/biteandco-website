@@ -1,5 +1,6 @@
 import { db, storage } from '@/firebase/configure';
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 
 export async function POST(request) {
   try {
@@ -8,7 +9,7 @@ export async function POST(request) {
     // Get all form fields
     const outletName = formData.get('outletName');
     const outletPhone = formData.get('outletPhone');
-    const outletEmail = formData.get('outletEmail');
+    const outletEmail = formData.get('outletEmail').toLowerCase();
     const taxRate = formData.get('taxRate');
     const bankName = formData.get('bankName');
     const bankAccountNumber = formData.get('bankAccountNumber');
@@ -17,12 +18,17 @@ export async function POST(request) {
     const password = formData.get('password');
 
     // Validate required fields
-    if (!outletName || !outletPhone || !outletEmail || !bankName || !bankAccountNumber || !ktpFile || !selfieFile) {
+    if (!outletName || !outletPhone || !outletEmail || !bankName || 
+        !bankAccountNumber || !ktpFile || !selfieFile || !password) {
       return NextResponse.json(
         { success: false, message: 'All required fields must be provided' },
         { status: 400 }
       );
     }
+
+    // Hash the password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Generate unique IDs for the files
     const sellerId = db.collection('sellers').doc().id;
@@ -65,6 +71,7 @@ export async function POST(request) {
       bankAccountNumber,
       ktpImageUrl: ktpUrl[0],
       selfieImageUrl: selfieUrl[0],
+      password: hashedPassword, // Store the hashed password
       status: 'pending',
       createdAt: new Date(),
       updatedAt: new Date(),
