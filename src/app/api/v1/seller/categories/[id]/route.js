@@ -1,12 +1,13 @@
 import { db } from '@/firebase/configure';
 import { verifyToken, createErrorResponse, createSuccessResponse } from '@/lib/auth';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
 
 // DELETE: Delete a category
 export async function DELETE(request, { params }) {
   try {
     const authResult = verifyToken(request);
     if (authResult.error) {
-      return createErrorResponse(authResult.error, authResult.status);
+      return withCORSHeaders(createErrorResponse(authResult.error, authResult.status));
     }
 
     const { sellerId } = authResult;
@@ -17,7 +18,7 @@ export async function DELETE(request, { params }) {
     const sellerDoc = await sellerRef.get();
     
     if (!sellerDoc.exists) {
-      return createErrorResponse('Seller not found', 404);
+      return withCORSHeaders(createErrorResponse('Seller not found', 404));
     }
 
     // Update seller document
@@ -26,7 +27,7 @@ export async function DELETE(request, { params }) {
     const categoryIndex = categories.findIndex(cat => cat.id === categoryId);
 
     if (categoryIndex === -1) {
-      return createErrorResponse('Category not found', 404);
+      return withCORSHeaders(createErrorResponse('Category not found', 404));
     }
 
     // Remove category
@@ -35,11 +36,11 @@ export async function DELETE(request, { params }) {
     // Update Firestore
     await sellerRef.update({ categories });
 
-    return createSuccessResponse({ message: 'Category deleted successfully' });
+    return withCORSHeaders(createSuccessResponse({ message: 'Category deleted successfully' }));
 
   } catch (error) {
     console.error('Delete category error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }
 
@@ -48,7 +49,7 @@ export async function PUT(request, { params }) {
   try {
     const authResult = verifyToken(request);
     if (authResult.error) {
-      return createErrorResponse(authResult.error, authResult.status);
+      return withCORSHeaders(createErrorResponse(authResult.error, authResult.status));
     }
 
     const { sellerId } = authResult;
@@ -57,7 +58,7 @@ export async function PUT(request, { params }) {
 
     // Validate input
     if (!name || !type) {
-      return createErrorResponse('Name and type are required', 400);
+      return withCORSHeaders(createErrorResponse('Name and type are required', 400));
     }
 
     // Get seller document
@@ -65,7 +66,7 @@ export async function PUT(request, { params }) {
     const sellerDoc = await sellerRef.get();
     
     if (!sellerDoc.exists) {
-      return createErrorResponse('Seller not found', 404);
+      return withCORSHeaders(createErrorResponse('Seller not found', 404));
     }
 
     // Update seller document
@@ -74,7 +75,7 @@ export async function PUT(request, { params }) {
     const categoryIndex = categories.findIndex(cat => cat.id === categoryId);
 
     if (categoryIndex === -1) {
-      return createErrorResponse('Category not found', 404);
+      return withCORSHeaders(createErrorResponse('Category not found', 404));
     }
 
     // Update category
@@ -88,12 +89,16 @@ export async function PUT(request, { params }) {
     // Update Firestore
     await sellerRef.update({ categories });
 
-    return createSuccessResponse({ 
+    return withCORSHeaders(createSuccessResponse({ 
       category: categories[categoryIndex]
-    }, 'Category updated successfully');
+    }, 'Category updated successfully'));
 
   } catch (error) {
     console.error('Update category error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
+}
+
+export async function OPTIONS() {
+  return handleOptions();
 }

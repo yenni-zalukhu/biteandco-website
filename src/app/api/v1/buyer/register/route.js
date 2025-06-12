@@ -1,8 +1,13 @@
 import { db } from '@/firebase/configure';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
 
 function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+export async function OPTIONS() {
+  return handleOptions();
 }
 
 export async function POST(request) {
@@ -11,7 +16,7 @@ export async function POST(request) {
 
     // Validate input
     if (!name || !email || !phone || !password) {
-      return createErrorResponse('All fields are required', 400);
+      return withCORSHeaders(createErrorResponse('All fields are required', 400));
     }
 
     // Check if email already exists
@@ -20,7 +25,7 @@ export async function POST(request) {
       .get();
 
     if (!buyersSnapshot.empty) {
-      return createErrorResponse('Email already registered', 400);
+      return withCORSHeaders(createErrorResponse('Email already registered', 400));
     }
 
     // Generate OTP
@@ -54,12 +59,11 @@ export async function POST(request) {
     });
     */
 
-    return createSuccessResponse({
+    return withCORSHeaders(createSuccessResponse({
       userId: buyerRef.id
-    }, 'Registration successful. Please check your email for OTP.');
+    }, 'Registration successful. Please check your email for OTP.'));
 
   } catch (error) {
-    console.error('Buyer registration error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }

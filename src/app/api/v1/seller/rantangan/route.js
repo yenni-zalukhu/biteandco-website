@@ -1,12 +1,17 @@
 import { db } from '@/firebase/configure';
 import { verifyToken, createErrorResponse, createSuccessResponse } from '@/lib/auth';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 // GET: Fetch Rantangan packages for a seller
 export async function GET(request) {
   try {
     const authResult = verifyToken(request);
     if (authResult.error) {
-      return createErrorResponse(authResult.error, authResult.status);
+      return withCORSHeaders(createErrorResponse(authResult.error, authResult.status));
     }
 
     const { sellerId } = authResult;
@@ -16,17 +21,16 @@ export async function GET(request) {
     const sellerDoc = await sellerRef.get();
     
     if (!sellerDoc.exists) {
-      return createErrorResponse('Seller not found', 404);
+      return withCORSHeaders(createErrorResponse('Seller not found', 404));
     }
 
     const sellerData = sellerDoc.data();
     const rantanganPackages = sellerData.rantanganPackages || getDefaultRantanganPackages();
 
-    return createSuccessResponse({ data: rantanganPackages });
+    return withCORSHeaders(createSuccessResponse({ data: rantanganPackages }));
 
   } catch (error) {
-    console.error('Get rantangan packages error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }
 
@@ -35,7 +39,7 @@ export async function PUT(request) {
   try {
     const authResult = verifyToken(request);
     if (authResult.error) {
-      return createErrorResponse(authResult.error, authResult.status);
+      return withCORSHeaders(createErrorResponse(authResult.error, authResult.status));
     }
 
     const { sellerId } = authResult;
@@ -43,11 +47,11 @@ export async function PUT(request) {
 
     // Validate input
     if (!packageType || !name || !description || !price) {
-      return createErrorResponse('All fields are required', 400);
+      return withCORSHeaders(createErrorResponse('All fields are required', 400));
     }
 
     if (!['harian', 'mingguan', 'bulanan'].includes(packageType.toLowerCase())) {
-      return createErrorResponse('Invalid package type', 400);
+      return withCORSHeaders(createErrorResponse('Invalid package type', 400));
     }
 
     // Get seller document
@@ -55,7 +59,7 @@ export async function PUT(request) {
     const sellerDoc = await sellerRef.get();
     
     if (!sellerDoc.exists) {
-      return createErrorResponse('Seller not found', 404);
+      return withCORSHeaders(createErrorResponse('Seller not found', 404));
     }
 
     const sellerData = sellerDoc.data();
@@ -76,13 +80,12 @@ export async function PUT(request) {
     // Update Firestore
     await sellerRef.update({ rantanganPackages });
 
-    return createSuccessResponse({ 
+    return withCORSHeaders(createSuccessResponse({ 
       package: rantanganPackages[packageIndex]
-    }, 'Rantangan package updated successfully');
+    }, 'Rantangan package updated successfully'));
 
   } catch (error) {
-    console.error('Update rantangan package error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }
 

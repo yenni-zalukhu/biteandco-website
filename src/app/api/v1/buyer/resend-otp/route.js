@@ -1,8 +1,13 @@
 import { db } from '@/firebase/configure';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
 
 function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+export async function OPTIONS() {
+  return handleOptions();
 }
 
 export async function POST(request) {
@@ -11,26 +16,26 @@ export async function POST(request) {
 
     // Validate input
     if (!email || !userId) {
-      return createErrorResponse('Email and userId are required', 400);
+      return withCORSHeaders(createErrorResponse('Email and userId are required', 400));
     }
 
     // Get buyer document
     const buyerDoc = await db.collection('buyers').doc(userId).get();
     
     if (!buyerDoc.exists) {
-      return createErrorResponse('User not found', 404);
+      return withCORSHeaders(createErrorResponse('User not found', 404));
     }
 
     const buyerData = buyerDoc.data();
 
     // Check if email matches
     if (buyerData.email !== email) {
-      return createErrorResponse('Invalid email', 400);
+      return withCORSHeaders(createErrorResponse('Invalid email', 400));
     }
 
     // Check if email is already verified
     if (buyerData.emailValidated) {
-      return createErrorResponse('Email is already verified', 400);
+      return withCORSHeaders(createErrorResponse('Email is already verified', 400));
     }
 
     // Generate new OTP
@@ -57,12 +62,9 @@ export async function POST(request) {
     });
     */
 
-    return createSuccessResponse({
-      message: 'New OTP sent successfully'
-    });
+    return withCORSHeaders(createSuccessResponse({ success: true }, 'OTP resent'));
 
   } catch (error) {
-    console.error('Resend OTP error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }

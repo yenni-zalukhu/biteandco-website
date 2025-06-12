@@ -5,6 +5,7 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
 
 // Helper function to parse multipart/form-data using request.formData()
 async function parseMultipartForm(req) {
@@ -24,6 +25,10 @@ async function parseMultipartForm(req) {
   return { fields, files };
 }
 
+export async function OPTIONS() {
+  return handleOptions();
+}
+
 export async function GET(request) {
   try {
     // 1. Extract JWT token with detailed validation
@@ -31,35 +36,41 @@ export async function GET(request) {
 
     if (!authHeader) {
       console.warn('No authorization header provided');
-      return NextResponse.json(
-        {
-          error: 'Authentication required',
-          debug: 'No Authorization header found in request'
-        },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Authentication required',
+            debug: 'No Authorization header found in request'
+          },
+          { status: 401 }
+        )
       );
     }
 
     if (!authHeader.startsWith('Bearer ')) {
       console.warn('Malformed authorization header:', authHeader);
-      return NextResponse.json(
-        {
-          error: 'Invalid token format',
-          debug: 'Authorization header must start with "Bearer "'
-        },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Invalid token format',
+            debug: 'Authorization header must start with "Bearer "'
+          },
+          { status: 401 }
+        )
       );
     }
 
     const token = authHeader.split(' ')[1];
     if (!token) {
       console.warn('Empty token provided');
-      return NextResponse.json(
-        {
-          error: 'Invalid token',
-          debug: 'Token is empty after "Bearer " prefix'
-        },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Invalid token',
+            debug: 'Token is empty after "Bearer " prefix'
+          },
+          { status: 401 }
+        )
       );
     }
 
@@ -81,26 +92,30 @@ export async function GET(request) {
         ]
       };
 
-      return NextResponse.json(
-        {
-          error: 'Invalid token',
-          debug: debugInfo
-        },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Invalid token',
+            debug: debugInfo
+          },
+          { status: 401 }
+        )
       );
     }
 
     if (!decoded?.sellerId) {
       console.warn('Token missing sellerId:', decoded);
-      return NextResponse.json(
-        {
-          error: 'Invalid token payload',
-          debug: {
-            message: 'Token decoded successfully but missing sellerId',
-            decodedPayload: decoded
-          }
-        },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Invalid token payload',
+            debug: {
+              message: 'Token decoded successfully but missing sellerId',
+              decodedPayload: decoded
+            }
+          },
+          { status: 401 }
+        )
       );
     }
 
@@ -112,61 +127,69 @@ export async function GET(request) {
 
       if (!userDoc.exists) {
         console.warn('No seller found with ID:', decoded.sellerId);
-        return NextResponse.json(
-          {
-            error: 'Seller not found',
-            debug: {
-              requestedId: decoded.sellerId,
-              collection: 'sellers'
-            }
-          },
-          { status: 404 }
+        return withCORSHeaders(
+          NextResponse.json(
+            {
+              error: 'Seller not found',
+              debug: {
+                requestedId: decoded.sellerId,
+                collection: 'sellers'
+              }
+            },
+            { status: 404 }
+          )
         );
       }
 
       // 4. Return data
       const userData = userDoc.data();
 
-      return NextResponse.json({
-        name: userData.outletName,
-        email: userData.outletEmail,
-        phone: userData.outletPhone || null,
-        address: userData.address || null,
-        kelurahan: userData.kelurahan || null,
-        kecamatan: userData.kecamatan || null,
-        provinsi: userData.provinsi || null,
-        kodePos: userData.kodePos || null,
-        catatan: userData.catatan || null,
-        storeIcon: userData.storeIcon || null, // Include storeIcon
-        storeBanner: userData.storeBanner || null, // Include storeBanner
-      });
+      return withCORSHeaders(
+        NextResponse.json({
+          name: userData.outletName,
+          email: userData.outletEmail,
+          phone: userData.outletPhone || null,
+          address: userData.address || null,
+          kelurahan: userData.kelurahan || null,
+          kecamatan: userData.kecamatan || null,
+          provinsi: userData.provinsi || null,
+          kodePos: userData.kodePos || null,
+          catatan: userData.catatan || null,
+          storeIcon: userData.storeIcon || null, // Include storeIcon
+          storeBanner: userData.storeBanner || null, // Include storeBanner
+        })
+      );
 
     } catch (error) {
       console.error('Database operation failed:', error);
-      return NextResponse.json(
-        {
-          error: 'Database error',
-          debug: {
-            message: error.message,
-            operation: 'Firestore get document',
-            documentId: decoded.sellerId
-          }
-        },
-        { status: 500 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Database error',
+            debug: {
+              message: error.message,
+              operation: 'Firestore get document',
+              documentId: decoded.sellerId
+            }
+          },
+          { status: 500 }
+        )
       );
     }
 
   } catch (error) {
     console.error('Unexpected API error:', error);
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        debug: {
-          message: error.message,
-          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        }
-      },
-      { status: 500 }
+    return withCORSHeaders(
+      NextResponse.json(
+        {
+          error: 'Internal server error',
+          debug: {
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+          }
+        },
+        { status: 500 }
+      )
     );
   }
 }
@@ -178,35 +201,41 @@ export async function PUT(request) {
 
     if (!authHeader) {
       console.warn('No authorization header provided');
-      return NextResponse.json(
-        {
-          error: 'Authentication required',
-          debug: 'No Authorization header found in request'
-        },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Authentication required',
+            debug: 'No Authorization header found in request'
+          },
+          { status: 401 }
+        )
       );
     }
 
     if (!authHeader.startsWith('Bearer ')) {
       console.warn('Malformed authorization header:', authHeader);
-      return NextResponse.json(
-        {
-          error: 'Invalid token format',
-          debug: 'Authorization header must start with "Bearer "'
-        },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Invalid token format',
+            debug: 'Authorization header must start with "Bearer "'
+          },
+          { status: 401 }
+        )
       );
     }
 
     const token = authHeader.split(' ')[1];
     if (!token) {
       console.warn('Empty token provided');
-      return NextResponse.json(
-        {
-          error: 'Invalid token',
-          debug: 'Token is empty after "Bearer " prefix'
-        },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Invalid token',
+            debug: 'Token is empty after "Bearer " prefix'
+          },
+          { status: 401 }
+        )
       );
     }
 
@@ -228,26 +257,30 @@ export async function PUT(request) {
         ]
       };
 
-      return NextResponse.json(
-        {
-          error: 'Invalid token',
-          debug: debugInfo
-        },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Invalid token',
+            debug: debugInfo
+          },
+          { status: 401 }
+        )
       );
     }
 
     if (!decoded?.sellerId) {
       console.warn('Token missing sellerId:', decoded);
-      return NextResponse.json(
-        {
-          error: 'Invalid token payload',
-          debug: {
-            message: 'Token decoded successfully but missing sellerId',
-            decodedPayload: decoded
-          }
-        },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Invalid token payload',
+            debug: {
+              message: 'Token decoded successfully but missing sellerId',
+              decodedPayload: decoded
+            }
+          },
+          { status: 401 }
+        )
       );
     }
 
@@ -300,14 +333,16 @@ export async function PUT(request) {
     // 4. Validate required fields
     if (!name && !phone && !address && !kelurahan && !kecamatan && !provinsi && !kodePos && !catatan && !storeIconURL && !storeBannerURL) {
       console.warn('No fields provided for profile update');
-      return NextResponse.json(
-        {
-          error: 'No fields provided',
-          debug: {
-            message: 'At least one field or image must be provided.'
-          }
-        },
-        { status: 400 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'No fields provided',
+            debug: {
+              message: 'At least one field or image must be provided.'
+            }
+          },
+          { status: 400 }
+        )
       );
     }
 
@@ -332,34 +367,38 @@ export async function PUT(request) {
 
       // 6. Respond with success message
       console.log('Seller profile updated successfully:', decoded.sellerId);
-      return NextResponse.json({ message: 'Profile updated successfully' });
+      return withCORSHeaders(NextResponse.json({ message: 'Profile updated successfully' }));
 
     } catch (dbError) {
       console.error('Database update failed:', dbError);
-      return NextResponse.json(
-        {
-          error: 'Database update error',
-          debug: {
-            message: dbError.message,
-            operation: 'Firestore update document',
-            documentId: decoded.sellerId
-          }
-        },
-        { status: 500 }
+      return withCORSHeaders(
+        NextResponse.json(
+          {
+            error: 'Database update error',
+            debug: {
+              message: dbError.message,
+              operation: 'Firestore update document',
+              documentId: decoded.sellerId
+            }
+          },
+          { status: 500 }
+        )
       );
     }
 
   } catch (error) {
     console.error('Unexpected API error:', error);
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        debug: {
-          message: error.message,
-          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        }
-      },
-      { status: 500 }
+    return withCORSHeaders(
+      NextResponse.json(
+        {
+          error: 'Internal server error',
+          debug: {
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+          }
+        },
+        { status: 500 }
+      )
     );
   }
 }

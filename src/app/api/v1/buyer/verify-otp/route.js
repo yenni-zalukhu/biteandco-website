@@ -1,5 +1,10 @@
 import { db } from '@/firebase/configure';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function POST(request) {
   try {
@@ -7,26 +12,26 @@ export async function POST(request) {
 
     // Validate input
     if (!email || !userId || !otp) {
-      return createErrorResponse('Email, userId, and OTP are required', 400);
+      return withCORSHeaders(createErrorResponse('Email, userId, and OTP are required', 400));
     }
 
     // Get buyer document
     const buyerDoc = await db.collection('buyers').doc(userId).get();
     
     if (!buyerDoc.exists) {
-      return createErrorResponse('User not found', 404);
+      return withCORSHeaders(createErrorResponse('User not found', 404));
     }
 
     const buyerData = buyerDoc.data();
 
     // Check if email matches
     if (buyerData.email !== email) {
-      return createErrorResponse('Invalid email', 400);
+      return withCORSHeaders(createErrorResponse('Invalid email', 400));
     }
 
     // Check if OTP matches
     if (buyerData.otp !== otp) {
-      return createErrorResponse('Invalid OTP', 400);
+      return withCORSHeaders(createErrorResponse('Invalid OTP', 400));
     }
 
     // Check if OTP has expired
@@ -34,7 +39,7 @@ export async function POST(request) {
     const now = new Date();
     
     if (now > otpExpiry) {
-      return createErrorResponse('OTP has expired', 400);
+      return withCORSHeaders(createErrorResponse('OTP has expired', 400));
     }
 
     // Update buyer document - mark email as validated and remove OTP
@@ -45,13 +50,12 @@ export async function POST(request) {
       updatedAt: new Date().toISOString()
     });
 
-    return createSuccessResponse({
+    return withCORSHeaders(createSuccessResponse({
       message: 'Email verified successfully',
       emailValidated: true
-    });
+    }));
 
   } catch (error) {
-    console.error('OTP verification error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }

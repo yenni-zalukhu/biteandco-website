@@ -2,23 +2,14 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
 import { verifyBuyerToken } from '@/middleware/buyerAuth';
 import { db } from '@/firebase/configure';
 import midtransClient from 'midtrans-client';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
 
-export async function OPTIONS(request) {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    },
-  });
+export async function OPTIONS() {
+  return handleOptions();
 }
 
-function withCORSHeaders(response) {
-  response.headers.set("Access-Control-Allow-Origin", "*");
-  response.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  return response;
+function wrapCORS(response) {
+  return withCORSHeaders(response);
 }
 
 export async function GET(request) {
@@ -34,7 +25,7 @@ export async function GET(request) {
     console.log('[DEBUG][GET] verifyBuyerToken result:', auth);
     
     if (auth.error) {
-      return createErrorResponse(auth.error, auth.status);
+      return wrapCORS(createErrorResponse(auth.error, auth.status));
     }
 
     const { buyerId } = auth;
@@ -72,15 +63,12 @@ export async function GET(request) {
       orders.push(order);
     }
 
-    const result = createSuccessResponse({
+    return wrapCORS(createSuccessResponse({
       orders
-    }, 'Orders retrieved successfully');
-    return withCORSHeaders(result);
+    }, 'Orders retrieved successfully'));
 
   } catch (error) {
-    console.error('Get buyer orders error:', error);
-    const errRes = createErrorResponse(error.message || 'Internal server error');
-    return withCORSHeaders(errRes);
+    return wrapCORS(createErrorResponse(error.message || 'Internal server error'));
   }
 }
 
@@ -97,7 +85,7 @@ export async function POST(request) {
     console.log('[DEBUG][POST] verifyBuyerToken result:', auth);
     
     if (auth.error) {
-      return createErrorResponse(auth.error, auth.status);
+      return wrapCORS(createErrorResponse(auth.error, auth.status));
     }
 
     const { buyerId, buyerData } = auth;
@@ -105,7 +93,7 @@ export async function POST(request) {
 
     // Validate order data
     if (!orderData.sellerId || !orderData.items || !orderData.totalAmount) {
-      return createErrorResponse('Seller ID, items, and total amount are required', 400);
+      return wrapCORS(createErrorResponse('Seller ID, items, and total amount are required', 400));
     }
 
     // Create new order
@@ -156,7 +144,7 @@ export async function POST(request) {
     try {
       snapResponse = await snap.createTransaction(parameter);
     } catch (err) {
-      return createErrorResponse('Failed to create Midtrans transaction: ' + err.message, 500);
+      return wrapCORS(createErrorResponse('Failed to create Midtrans transaction: ' + err.message, 500));
     }
 
     // Save snapUrl to Firestore order document
@@ -165,7 +153,7 @@ export async function POST(request) {
       snapToken: snapResponse.token,
     });
 
-    const result = createSuccessResponse({
+    return wrapCORS(createSuccessResponse({
       orderId: orderRef.id,
       order: {
         id: orderRef.id,
@@ -175,12 +163,9 @@ export async function POST(request) {
       },
       snapUrl: snapResponse.redirect_url,
       snapToken: snapResponse.token,
-    }, 'Order created successfully');
-    return withCORSHeaders(result);
+    }, 'Order created successfully'));
 
   } catch (error) {
-    console.error('Create order error:', error);
-    const errRes = createErrorResponse(error.message || 'Internal server error');
-    return withCORSHeaders(errRes);
+    return wrapCORS(createErrorResponse(error.message || 'Internal server error'));
   }
 }

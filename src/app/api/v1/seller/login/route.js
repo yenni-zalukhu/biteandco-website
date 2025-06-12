@@ -2,6 +2,11 @@ import { db } from '@/firebase/configure';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function POST(request) {
   try {
@@ -9,20 +14,27 @@ export async function POST(request) {
 
     // Validate input
     if (!email || !password) {
-      return NextResponse.json(
-        { success: false, message: 'Email atau password diperlukan!' },
-        { status: 400 }
+      return withCORSHeaders(
+        NextResponse.json(
+          { success: false, message: 'Email atau password diperlukan!' },
+          { status: 400 }
+        )
       );
     }
 
     // Find seller by email
     const sellersRef = db.collection('sellers');
-    const snapshot = await sellersRef.where('outletEmail', '==', email).limit(1).get();
+    const snapshot = await sellersRef
+      .where('outletEmail', '==', email)
+      .limit(1)
+      .get();
 
     if (snapshot.empty) {
-      return NextResponse.json(
-        { success: false, message: 'Email atau password salah' },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          { success: false, message: 'Email atau password salah' },
+          { status: 401 }
+        )
       );
     }
 
@@ -32,17 +44,21 @@ export async function POST(request) {
     // Verify password
     const passwordMatch = await bcrypt.compare(password, sellerData.password);
     if (!passwordMatch) {
-      return NextResponse.json(
-        { success: false, message: 'Email atau password salah' },
-        { status: 401 }
+      return withCORSHeaders(
+        NextResponse.json(
+          { success: false, message: 'Email atau password salah' },
+          { status: 401 }
+        )
       );
     }
 
     // Check if seller is approved
     if (sellerData.status !== 'approved') {
-      return NextResponse.json(
-        { success: false, message: 'Akun anda belum di setujui oleh admin' },
-        { status: 403 }
+      return withCORSHeaders(
+        NextResponse.json(
+          { success: false, message: 'Akun anda belum di setujui oleh admin' },
+          { status: 403 }
+        )
       );
     }
 
@@ -58,21 +74,24 @@ export async function POST(request) {
     );
 
     // Return success response with token
-    return NextResponse.json({
-      success: true,
-      token,
-      seller: {
-        id: sellerDoc.id,
-        outletName: sellerData.outletName,
-        email: sellerData.outletEmail,
-      }
-    });
-
+    return withCORSHeaders(
+      NextResponse.json({
+        success: true,
+        token,
+        seller: {
+          id: sellerDoc.id,
+          outletName: sellerData.outletName,
+          email: sellerData.outletEmail,
+        },
+      })
+    );
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json(
-      { success: false, message: error.message || 'Internal server error' },
-      { status: 500 }
+    return withCORSHeaders(
+      NextResponse.json(
+        { success: false, message: error.message || 'Internal server error' },
+        { status: 500 }
+      )
     );
   }
 }

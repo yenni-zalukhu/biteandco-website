@@ -1,6 +1,11 @@
 import { db } from '@/firebase/configure';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function POST(request) {
   try {
@@ -8,7 +13,7 @@ export async function POST(request) {
 
     // Validate input
     if (!email || !password) {
-      return createErrorResponse('Email and password are required', 400);
+      return withCORSHeaders(createErrorResponse('Email and password are required', 400));
     }
 
     // Get buyer with matching email
@@ -17,7 +22,7 @@ export async function POST(request) {
       .get();
 
     if (buyersSnapshot.empty) {
-      return createErrorResponse('Email atau password salah', 401);
+      return withCORSHeaders(createErrorResponse('Email atau password salah', 401));
     }
 
     const buyerDoc = buyersSnapshot.docs[0];
@@ -25,13 +30,13 @@ export async function POST(request) {
 
     // Check if email is verified
     if (!buyerData.emailValidated) {
-      return createErrorResponse('Email belum diverifikasi. Silakan verifikasi email Anda terlebih dahulu.', 401);
+      return withCORSHeaders(createErrorResponse('Email belum diverifikasi. Silakan verifikasi email Anda terlebih dahulu.', 401));
     }
 
     // Verify password
     // Note: In production, use proper password hashing comparison
     if (buyerData.password !== password) {
-      return createErrorResponse('Email atau password salah', 401);
+      return withCORSHeaders(createErrorResponse('Email atau password salah', 401));
     }
 
     // Generate JWT token
@@ -46,7 +51,7 @@ export async function POST(request) {
     );
 
     // Return success with token
-    return createSuccessResponse({
+    const res = createSuccessResponse({
       token,
       user: {
         id: buyerDoc.id,
@@ -55,9 +60,11 @@ export async function POST(request) {
         phone: buyerData.phone,
       }
     }, 'Login successful');
+    return withCORSHeaders(res);
 
   } catch (error) {
     console.error('Buyer login error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    const errRes = createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(errRes);
   }
 }

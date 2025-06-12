@@ -1,20 +1,24 @@
 // Next.js 15 App Router API route for seller detail
 import { db } from '@/firebase/configure';
-import { NextResponse } from 'next/server';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function GET(req, context) {
   try {
     const params = await context.params;
     const { sellerid } = params;
     if (!sellerid) {
-      return NextResponse.json({ message: 'Missing sellerid' }, { status: 400 });
+      return withCORSHeaders(NextResponse.json({ message: 'Missing sellerid' }, { status: 400 }));
     }
 
     // Fetch seller document
     const docRef = db.collection('sellers').doc(sellerid);
     const docSnap = await docRef.get();
     if (!docSnap.exists) {
-      return NextResponse.json({ message: 'Seller not found' }, { status: 404 });
+      return withCORSHeaders(NextResponse.json({ message: 'Seller not found' }, { status: 404 }));
     }
     const data = docSnap.data();
 
@@ -45,7 +49,7 @@ export async function GET(req, context) {
       banner: data.banner || data.storeBanner || null, // For compatibility
     };
     console.log('Seller detail fetched:', seller);
-    return NextResponse.json({ seller });
+    return withCORSHeaders(NextResponse.json({ seller }));
   } catch (error) {
     let debugInfo = {
       message: error.message,
@@ -56,6 +60,6 @@ export async function GET(req, context) {
       hint: 'Check Firestore rules, collection name, and if Firestore is initialized properly.'
     };
     console.error('Error in GET /api/v1/seller/detail/[sellerid]:', debugInfo);
-    return NextResponse.json({ error: debugInfo }, { status: 500 });
+    return withCORSHeaders(NextResponse.json({ error: debugInfo }, { status: 500 }));
   }
 }

@@ -1,30 +1,36 @@
 import { db, storage } from '@/firebase/configure';
 import { verifyToken, createErrorResponse, createSuccessResponse } from '@/lib/auth';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
 import { NextResponse } from 'next/server';
+
+// OPTIONS: Handle preflight requests for CORS
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 // GET: Fetch all categories and menu items
 export async function GET(request) {
   try {
     const authResult = verifyToken(request);
     if (authResult.error) {
-      return createErrorResponse(authResult.error, authResult.status);
+      return withCORSHeaders(createErrorResponse(authResult.error, authResult.status));
     }
 
     const { sellerId } = authResult;
     const sellerDoc = await db.collection('sellers').doc(sellerId).get();
     
     if (!sellerDoc.exists) {
-      return createErrorResponse('Seller not found', 404);
+      return withCORSHeaders(createErrorResponse('Seller not found', 404));
     }
 
     const sellerData = sellerDoc.data();
     const categories = sellerData.categories || [];
 
-    return createSuccessResponse({ data: categories });
+    return withCORSHeaders(createSuccessResponse({ data: categories }));
 
   } catch (error) {
     console.error('Get menu error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }
 
@@ -34,7 +40,7 @@ export async function DELETE(request) {
   try {
     const authResult = verifyToken(request);
     if (authResult.error) {
-      return createErrorResponse(authResult.error, authResult.status);
+      return withCORSHeaders(createErrorResponse(authResult.error, authResult.status));
     }
 
     const { sellerId } = authResult;
@@ -42,7 +48,7 @@ export async function DELETE(request) {
 
     // Validate input
     if (!categoryId || !menuId) {
-      return createErrorResponse('Category ID and Menu ID are required', 400);
+      return withCORSHeaders(createErrorResponse('Category ID and Menu ID are required', 400));
     }
 
     // Get seller document
@@ -50,7 +56,7 @@ export async function DELETE(request) {
     const sellerDoc = await sellerRef.get();
     
     if (!sellerDoc.exists) {
-      return createErrorResponse('Seller not found', 404);
+      return withCORSHeaders(createErrorResponse('Seller not found', 404));
     }
 
     // Update seller document
@@ -59,13 +65,13 @@ export async function DELETE(request) {
     const categoryIndex = categories.findIndex(cat => cat.id === categoryId);
 
     if (categoryIndex === -1) {
-      return createErrorResponse('Category not found', 404);
+      return withCORSHeaders(createErrorResponse('Category not found', 404));
     }
 
     // Remove menu item from category
     const menuIndex = categories[categoryIndex].items.findIndex(item => item.id === menuId);
     if (menuIndex === -1) {
-      return createErrorResponse('Menu item not found', 404);
+      return withCORSHeaders(createErrorResponse('Menu item not found', 404));
     }
 
     categories[categoryIndex].items.splice(menuIndex, 1);
@@ -73,11 +79,11 @@ export async function DELETE(request) {
     // Update Firestore
     await sellerRef.update({ categories });
 
-    return createSuccessResponse({ message: 'Menu item deleted successfully' });
+    return withCORSHeaders(createSuccessResponse({ message: 'Menu item deleted successfully' }));
 
   } catch (error) {
     console.error('Delete menu item error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }
 
@@ -86,7 +92,7 @@ export async function PUT(request) {
   try {
     const authResult = verifyToken(request);
     if (authResult.error) {
-      return createErrorResponse(authResult.error, authResult.status);
+      return withCORSHeaders(createErrorResponse(authResult.error, authResult.status));
     }
 
     const { sellerId } = authResult;
@@ -101,7 +107,7 @@ export async function PUT(request) {
 
     // Validate input
     if (!name || !description || !price || !categoryId || !menuId) {
-      return createErrorResponse('All fields are required', 400);
+      return withCORSHeaders(createErrorResponse('All fields are required', 400));
     }
 
     // Get seller document
@@ -109,7 +115,7 @@ export async function PUT(request) {
     const sellerDoc = await sellerRef.get();
     
     if (!sellerDoc.exists) {
-      return createErrorResponse('Seller not found', 404);
+      return withCORSHeaders(createErrorResponse('Seller not found', 404));
     }
 
     let imageUrl = null;
@@ -140,13 +146,13 @@ export async function PUT(request) {
     const categoryIndex = categories.findIndex(cat => cat.id === categoryId);
 
     if (categoryIndex === -1) {
-      return createErrorResponse('Category not found', 404);
+      return withCORSHeaders(createErrorResponse('Category not found', 404));
     }
 
     // Find and update menu item
     const menuIndex = categories[categoryIndex].items.findIndex(item => item.id === menuId);
     if (menuIndex === -1) {
-      return createErrorResponse('Menu item not found', 404);
+      return withCORSHeaders(createErrorResponse('Menu item not found', 404));
     }
 
     // Update menu item
@@ -162,13 +168,13 @@ export async function PUT(request) {
     // Update Firestore
     await sellerRef.update({ categories });
 
-    return createSuccessResponse({ 
+    return withCORSHeaders(createSuccessResponse({ 
       menuItem: categories[categoryIndex].items[menuIndex] 
-    }, 'Menu item updated successfully');
+    }, 'Menu item updated successfully'));
 
   } catch (error) {
     console.error('Update menu item error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }
 
@@ -176,7 +182,7 @@ export async function POST(request) {
   try {
     const authResult = verifyToken(request);
     if (authResult.error) {
-      return createErrorResponse(authResult.error, authResult.status);
+      return withCORSHeaders(createErrorResponse(authResult.error, authResult.status));
     }
 
     const { sellerId } = authResult;
@@ -190,7 +196,7 @@ export async function POST(request) {
 
     // Validate input
     if (!name || !description || !price || !categoryId) {
-      return createErrorResponse('All fields are required', 400);
+      return withCORSHeaders(createErrorResponse('All fields are required', 400));
     }
 
     // Get seller document
@@ -198,7 +204,7 @@ export async function POST(request) {
     const sellerDoc = await sellerRef.get();
     
     if (!sellerDoc.exists) {
-      return createErrorResponse('Seller not found', 404);
+      return withCORSHeaders(createErrorResponse('Seller not found', 404));
     }
 
     let imageUrl = null;
@@ -239,7 +245,7 @@ export async function POST(request) {
     const categoryIndex = categories.findIndex(cat => cat.id === categoryId);
 
     if (categoryIndex === -1) {
-      return createErrorResponse('Category not found', 404);
+      return withCORSHeaders(createErrorResponse('Category not found', 404));
     }
 
     // Add menu item to category
@@ -249,10 +255,10 @@ export async function POST(request) {
     // Update Firestore
     await sellerRef.update({ categories });
 
-    return createSuccessResponse({ menuItem }, 'Menu item added successfully');
+    return withCORSHeaders(createSuccessResponse({ menuItem }, 'Menu item added successfully'));
 
   } catch (error) {
     console.error('Add menu item error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }

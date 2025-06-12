@@ -1,11 +1,16 @@
 import { db } from '@/firebase/configure';
 import { verifyToken, createErrorResponse, createSuccessResponse } from '@/lib/auth';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function POST(request) {
   try {
     const authResult = verifyToken(request);
     if (authResult.error) {
-      return createErrorResponse(authResult.error, authResult.status);
+      return withCORSHeaders(createErrorResponse(authResult.error, authResult.status));
     }
 
     const { sellerId } = authResult;
@@ -13,7 +18,7 @@ export async function POST(request) {
 
     // Validate input
     if (!name || !type) {
-      return createErrorResponse('Name and type are required', 400);
+      return withCORSHeaders(createErrorResponse('Name and type are required', 400));
     }
 
     // Get seller document
@@ -21,7 +26,7 @@ export async function POST(request) {
     const sellerDoc = await sellerRef.get();
     
     if (!sellerDoc.exists) {
-      return createErrorResponse('Seller not found', 404);
+      return withCORSHeaders(createErrorResponse('Seller not found', 404));
     }
 
     // Create new category
@@ -40,12 +45,12 @@ export async function POST(request) {
 
     await sellerRef.update({ categories });
 
-    return createSuccessResponse({
+    return withCORSHeaders(createSuccessResponse({
       category: newCategory
-    }, 'Category created successfully');
+    }, 'Category created successfully'));
 
   } catch (error) {
     console.error('Create category error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
   }
 }

@@ -1,6 +1,11 @@
 import { db, storage } from '@/firebase/configure';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function POST(request) {
   try {
@@ -20,10 +25,10 @@ export async function POST(request) {
     // Validate required fields
     if (!outletName || !outletPhone || !outletEmail || !bankName || 
         !bankAccountNumber || !ktpFile || !selfieFile || !password) {
-      return NextResponse.json(
+      return withCORSHeaders(NextResponse.json(
         { success: false, message: 'All required fields must be provided' },
         { status: 400 }
-      );
+      ));
     }
 
     // Hash the password
@@ -79,17 +84,17 @@ export async function POST(request) {
 
     await db.collection('sellers').doc(sellerId).set(sellerData);
 
-    return NextResponse.json({
+    return withCORSHeaders(NextResponse.json({
       success: true,
       sellerId,
       message: 'Seller registration submitted successfully'
-    });
+    }));
 
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json(
+    return withCORSHeaders(NextResponse.json(
       { success: false, message: error.message || 'Internal server error' },
       { status: 500 }
-    );
+    ));
   }
 }

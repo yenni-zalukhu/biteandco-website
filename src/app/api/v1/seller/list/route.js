@@ -1,4 +1,9 @@
 import { db } from '@/firebase/configure';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function GET(req) {
   try {
@@ -45,10 +50,10 @@ export async function GET(req) {
       };
     });
 
-    return new Response(JSON.stringify({ sellers }), {
+    return withCORSHeaders(new Response(JSON.stringify({ sellers }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-    });
+    }));
   } catch (error) {
     let debugInfo = {
       message: error.message,
@@ -59,9 +64,9 @@ export async function GET(req) {
       // Add more debug info
       hint: 'Check Firestore rules, collection name, and if Firestore is initialized properly.'
     };
-    return new Response(JSON.stringify({ error: debugInfo }), {
+    return withCORSHeaders(new Response(JSON.stringify({ error: debugInfo }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
-    });
+    }));
   }
 }

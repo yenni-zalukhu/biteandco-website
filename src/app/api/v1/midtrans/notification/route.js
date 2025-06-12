@@ -1,5 +1,10 @@
 import { db } from '@/firebase/configure';
 import midtransClient from 'midtrans-client';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function POST(req) {
   try {
@@ -12,7 +17,7 @@ export async function POST(req) {
     const orderRef = db.collection('orders').doc(order_id);
     const orderSnap = await orderRef.get();
     if (!orderSnap.exists) {
-      return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
+      return withCORSHeaders(new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 }));
     }
 
     // Map Midtrans status to your app's status
@@ -33,8 +38,8 @@ export async function POST(req) {
       updatedAt: new Date().toISOString(),
     });
 
-    return new Response(JSON.stringify({ message: 'Order status updated', status: newStatus }), { status: 200 });
+    return withCORSHeaders(new Response(JSON.stringify({ message: 'Order status updated', status: newStatus }), { status: 200 }));
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return withCORSHeaders(new Response(JSON.stringify({ error: err.message }), { status: 500 }));
   }
 }
