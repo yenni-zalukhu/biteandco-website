@@ -3,6 +3,24 @@ import { verifyBuyerToken } from '@/middleware/buyerAuth';
 import { db } from '@/firebase/configure';
 import midtransClient from 'midtrans-client';
 
+export async function OPTIONS(request) {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    },
+  });
+}
+
+function withCORSHeaders(response) {
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  return response;
+}
+
 export async function GET(request) {
   try {
     // Debug log for Vercel
@@ -54,13 +72,15 @@ export async function GET(request) {
       orders.push(order);
     }
 
-    return createSuccessResponse({
+    const result = createSuccessResponse({
       orders
     }, 'Orders retrieved successfully');
+    return withCORSHeaders(result);
 
   } catch (error) {
     console.error('Get buyer orders error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    const errRes = createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(errRes);
   }
 }
 
@@ -145,7 +165,7 @@ export async function POST(request) {
       snapToken: snapResponse.token,
     });
 
-    return createSuccessResponse({
+    const result = createSuccessResponse({
       orderId: orderRef.id,
       order: {
         id: orderRef.id,
@@ -156,9 +176,11 @@ export async function POST(request) {
       snapUrl: snapResponse.redirect_url,
       snapToken: snapResponse.token,
     }, 'Order created successfully');
+    return withCORSHeaders(result);
 
   } catch (error) {
     console.error('Create order error:', error);
-    return createErrorResponse(error.message || 'Internal server error');
+    const errRes = createErrorResponse(error.message || 'Internal server error');
+    return withCORSHeaders(errRes);
   }
 }
