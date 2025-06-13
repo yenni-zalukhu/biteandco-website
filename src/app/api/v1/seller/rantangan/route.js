@@ -96,8 +96,8 @@ function getDefaultRantanganPackages() {
       id: 'harian',
       type: 'harian',
       name: 'Paket Harian',
-      description: 'Menu : Nasi Rendang, Nasi Ayam, Capjay',
-      price: 10000,
+      description: 'isi disini',
+      price: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     },
@@ -105,8 +105,8 @@ function getDefaultRantanganPackages() {
       id: 'mingguan',
       type: 'mingguan',
       name: 'Paket Mingguan',
-      description: 'Menu : Nasi Rendang, Nasi Ayam, Capjay',
-      price: 60000,
+      description: 'isi disini',
+      price: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     },
@@ -114,8 +114,8 @@ function getDefaultRantanganPackages() {
       id: 'bulanan',
       type: 'bulanan',
       name: 'Paket Bulanan',
-      description: 'Menu : Nasi Rendang, Nasi Ayam, Capjay',
-      price: 250000,
+      description: 'isi disini',
+      price: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
