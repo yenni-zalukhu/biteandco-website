@@ -46,6 +46,7 @@ export async function GET(req) {
         rating: data.rating || 0,
         address: data.address,
         logo: data.logo || data.storeIcon || null,
+        kelurahan: data.kelurahan || null, // <-- add kelurahan
         distance: null // Distance calculation can be added if needed
       };
     });
