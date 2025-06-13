@@ -133,6 +133,12 @@ export async function POST(request) {
     }
 
     // Create new order
+    // Determine statusProgress for new order
+    let statusProgress = 'waiting_approval';
+    // Default: waiting_approval -> processing -> delivery -> completed
+    if ('pending' === 'pending') {
+      statusProgress = 'waiting_approval';
+    }
     const newOrder = {
       buyerId,
       buyerName: buyerData.name,
@@ -142,6 +148,7 @@ export async function POST(request) {
       items: orderData.items,
       totalAmount: orderData.totalAmount,
       status: 'pending',
+      statusProgress, // <-- add statusProgress to Firestore
       deliveryAddress: orderData.deliveryAddress || '',
       notes: orderData.notes || '',
       createdAt: new Date().toISOString(),
