@@ -1,6 +1,6 @@
 // GET /api/v1/seller/orders (list all orders for seller, optional for future use)
 import { NextResponse } from "next/server";
-import db from "@/src/lib/db";
+import db from "@/firebase/configure";
 
 export async function GET(req) {
   // Optionally, get sellerId from query or auth

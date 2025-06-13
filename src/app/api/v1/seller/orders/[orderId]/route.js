@@ -1,6 +1,6 @@
 // GET /api/v1/seller/orders/[orderId]
 import { NextResponse } from "next/server";
-import db from "@/src/lib/db";
+import db from "@/firebase/configure";
 
 export async function GET(req, { params }) {
   const { orderId } = params;
