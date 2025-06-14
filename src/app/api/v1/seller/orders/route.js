@@ -21,6 +21,9 @@ export async function GET(req) {
     const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     return withCORSHeaders(NextResponse.json({ orders }));
   } catch (e) {
+    // Log error and provide Firestore troubleshooting link
+    console.error('[FIREBASE][ERROR]', e);
+    console.log('[FIREBASE] Troubleshoot Firestore indexes: https://console.firebase.google.com/project/_/firestore/indexes');
     return withCORSHeaders(NextResponse.json({ error: e.message }, { status: 500 }));
   }
 }
