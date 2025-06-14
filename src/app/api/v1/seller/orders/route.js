@@ -15,6 +15,8 @@ export async function GET(req) {
       return withCORSHeaders(NextResponse.json({ error: "Missing sellerId" }, { status: 400 }));
     }
     // Firestore query for orders by sellerId
+    console.log('[FIREBASE] Query: db.collection("orders").where("sellerId", "==",', sellerId, ').orderBy("createdAt", "desc")');
+    console.log('[FIREBASE] Firestore orders collection link: https://console.firebase.google.com/project/_/firestore/data/~2Forders');
     const snapshot = await db.collection("orders").where("sellerId", "==", sellerId).orderBy("createdAt", "desc").get();
     const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     return withCORSHeaders(NextResponse.json({ orders }));
