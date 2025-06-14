@@ -156,7 +156,8 @@ export async function POST(request) {
       deliveryAddress: orderData.deliveryAddress || '',
       notes: orderData.notes || '',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      pax: orderData.pax ? parseInt(orderData.pax) || 1 : 1, // Store pax if provided
     };
 
     // Save to Firestore
