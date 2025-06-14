@@ -8,11 +8,12 @@ export async function GET(req, { params }) {
     return NextResponse.json({ error: "Missing orderId" }, { status: 400 });
   }
   try {
-    // Example: get order by ID from a MongoDB collection 'orders'
-    const order = await db.collection("orders").findOne({ id: orderId });
-    if (!order) {
+    // Firestore: get order by document ID
+    const doc = await db.collection("orders").doc(orderId).get();
+    if (!doc.exists) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
+    const order = { id: doc.id, ...doc.data() };
     return NextResponse.json({ order });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
