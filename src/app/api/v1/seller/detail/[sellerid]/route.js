@@ -15,6 +15,25 @@ export async function GET(req, context) {
       return withCORSHeaders(NextResponse.json({ message: 'Missing sellerid' }, { status: 400 }));
     }
 
+    // Extract buyer location from query parameters
+    const { searchParams } = new URL(req.url);
+    const buyerLat = parseFloat(searchParams.get('buyerLat'));
+    const buyerLng = parseFloat(searchParams.get('buyerLng'));
+
+    // Function to calculate distance between two points using Haversine formula
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+      const R = 6371; // Radius of the Earth in kilometers
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c; // Distance in kilometers
+      return Math.round(distance * 10) / 10; // Round to 1 decimal place
+    };
+
     // Fetch seller document
     const docRef = db.collection('sellers').doc(sellerid);
     const docSnap = await docRef.get();
@@ -38,6 +57,12 @@ export async function GET(req, context) {
       }));
     }
 
+    // Calculate distance if buyer and seller coordinates are available
+    let distance = null;
+    if (buyerLat && buyerLng && data.pinLat && data.pinLng) {
+      distance = calculateDistance(buyerLat, buyerLng, data.pinLat, data.pinLng);
+    }
+
     const seller = {
       id: docSnap.id,
       name: data.name || data.outletName || null,
@@ -50,6 +75,7 @@ export async function GET(req, context) {
       categories,
       storeBanner: data.storeBanner || data.banner || null, // Add this line
       banner: data.banner || data.storeBanner || null, // For compatibility
+      distance: distance, // Add distance field
     };
     console.log('Seller detail fetched:', seller);
     return withCORSHeaders(NextResponse.json({ seller }));
