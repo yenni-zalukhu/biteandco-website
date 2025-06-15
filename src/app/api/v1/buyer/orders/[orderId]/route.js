@@ -24,7 +24,7 @@ export async function PATCH(request, { params }) {
     const body = await request.json();
     const updateData = {};
     if (body.status) updateData.status = body.status;
-    if (body.statusProgress) updateData.statusProgress = body.statusProgress;
+    // Do NOT update statusProgress from PATCH anymore
     updateData.updatedAt = new Date().toISOString();
     await db.collection('orders').doc(orderId).update(updateData);
     return withCORSHeaders(
