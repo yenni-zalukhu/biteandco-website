@@ -157,6 +157,9 @@ export async function GET(request) {
           catatan: userData.catatan || null,
           storeIcon: userData.storeIcon || null, // Include storeIcon
           storeBanner: userData.storeBanner || null, // Include storeBanner
+          pinLat: userData.pinLat || null,
+          pinLng: userData.pinLng || null,
+          pinAddress: userData.pinAddress || null,
         })
       );
 
@@ -287,7 +290,7 @@ export async function PUT(request) {
     // 3. Parse multipart form data
     const { fields, files } = await parseMultipartForm(request);
 
-    const { name, phone, address, kelurahan, kecamatan, provinsi, kodePos, catatan } = fields;
+    const { name, phone, address, kelurahan, kecamatan, provinsi, kodePos, catatan, pinLat, pinLng, pinAddress } = fields;
 
     let storeIconURL = null;
     let storeBannerURL = null;
@@ -361,6 +364,9 @@ export async function PUT(request) {
       if (catatan) updateData.catatan = catatan;
       if (storeIconURL) updateData.storeIcon = storeIconURL;
       if (storeBannerURL) updateData.storeBanner = storeBannerURL;
+      if (pinLat) updateData.pinLat = pinLat;
+      if (pinLng) updateData.pinLng = pinLng;
+      if (pinAddress) updateData.pinAddress = pinAddress;
       updateData.updatedAt = new Date().toISOString();
 
       await userRef.update(updateData);
