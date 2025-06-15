@@ -18,15 +18,21 @@ export async function GET(request, { params }) {
       );
     }
     // Midtrans API credentials
-    const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY;
-    if (!MIDTRANS_SERVER_KEY) {
+    let serverKey;
+    let midtransUrl;
+    if (process.env.MIDTRANS_MODE === 'production') {
+      serverKey = process.env.MIDTRANS_PRODUCTION_SERVER_KEY;
+      midtransUrl = `https://api.midtrans.com/v2/${orderId}/status`;
+    } else {
+      serverKey = process.env.MIDTRANS_SANDBOX_SERVER_KEY;
+      midtransUrl = `https://api.sandbox.midtrans.com/v2/${orderId}/status`;
+    }
+    if (!serverKey) {
       return withCORSHeaders(
         NextResponse.json({ error: 'Missing Midtrans server key' }, { status: 500 })
       );
     }
-    // Call Midtrans API
-    const midtransUrl = `https://api.midtrans.com/v2/${orderId}/status`;
-    const auth = Buffer.from(MIDTRANS_SERVER_KEY + ':').toString('base64');
+    const auth = Buffer.from(serverKey + ':').toString('base64');
     const res = await axios.get(midtransUrl, {
       headers: {
         Authorization: `Basic ${auth}`,
