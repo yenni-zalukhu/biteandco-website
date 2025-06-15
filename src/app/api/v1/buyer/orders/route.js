@@ -158,6 +158,7 @@ export async function POST(request) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       pax: orderData.pax ? parseInt(orderData.pax) || 1 : 1, // Store pax if provided
+      orderType: orderData.orderType || '', // Store OrderType if provided
     };
 
     // Save to Firestore
