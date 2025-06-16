@@ -67,12 +67,21 @@ export async function GET(req) {
             distance = calculateDistance(buyerLat, buyerLng, data.pinLat, data.pinLng);
           }
           
+          // Debug: Log available image fields
+          console.log('Seller image fields for', data.name, ':', {
+            storeBanner: data.storeBanner,
+            banner: data.banner,
+            logo: data.logo,
+            storeIcon: data.storeIcon
+          });
+          
           sellersWithRantangan.push({
             id: doc.id,
             name: data.name || data.outletName || null,
             rating: data.rating || 0,
             address: data.address,
             logo: data.logo || data.storeIcon || null,
+            banner: data.storeBanner || data.banner || data.logo || data.storeIcon || null,
             kelurahan: data.kelurahan || null,
             pinLat: data.pinLat || null,
             pinLng: data.pinLng || null,
