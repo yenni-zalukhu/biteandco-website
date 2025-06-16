@@ -36,10 +36,12 @@ export async function PATCH(req, { params }) {
       return withCORSHeaders(NextResponse.json({ error: "Missing orderId" }, { status: 400 }));
     }
     const body = await req.json();
-    const { statusProgress } = body;
+    const { statusProgress, dailyDeliveryLogs } = body;
+    
     if (!statusProgress) {
       return withCORSHeaders(NextResponse.json({ error: "Missing statusProgress" }, { status: 400 }));
     }
+    
     // Get order doc
     const orderRef = db.collection("orders").doc(orderId);
     const orderSnap = await orderRef.get();
@@ -50,8 +52,25 @@ export async function PATCH(req, { params }) {
     if (orderData.sellerId !== sellerId) {
       return withCORSHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 403 }));
     }
-    await orderRef.update({ statusProgress });
-    return withCORSHeaders(NextResponse.json({ success: true, statusProgress }));
+    
+    // Prepare update data
+    const updateData = {
+      statusProgress,
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Add daily delivery logs if provided
+    if (dailyDeliveryLogs !== undefined) {
+      updateData.dailyDeliveryLogs = dailyDeliveryLogs;
+    }
+    
+    await orderRef.update(updateData);
+    
+    return withCORSHeaders(NextResponse.json({ 
+      success: true, 
+      statusProgress,
+      dailyDeliveryLogs: updateData.dailyDeliveryLogs || orderData.dailyDeliveryLogs || []
+    }));
   } catch (e) {
     return withCORSHeaders(NextResponse.json({ error: e.message }, { status: 500 }));
   }
