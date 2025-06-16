@@ -76,6 +76,11 @@ export async function GET(req, context) {
       storeBanner: data.storeBanner || data.banner || null, // Add this line
       banner: data.banner || data.storeBanner || null, // For compatibility
       distance: distance, // Add distance field
+      // Add seller coordinates to response
+      pinLat: data.pinLat || null,
+      pinLng: data.pinLng || null,
+      pinAddress: data.pinAddress || null,
+      address: data.address || null,
     };
     console.log('Seller detail fetched:', seller);
     return withCORSHeaders(NextResponse.json({ seller }));

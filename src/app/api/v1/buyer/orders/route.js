@@ -12,6 +12,22 @@ function wrapCORS(response) {
   return withCORSHeaders(response);
 }
 
+// Function to calculate distance between two points using Haversine formula
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  
+  const R = 6371; // Radius of the Earth in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c; // Distance in kilometers
+  return Math.round(distance * 10) / 10; // Round to 1 decimal place
+}
+
 export async function GET(request) {
   try {
     // Debug log for Vercel
@@ -136,6 +152,32 @@ export async function POST(request) {
       return wrapCORS(createErrorResponse('Seller ID, items, and total amount are required', 400));
     }
 
+    // Fetch seller data to get seller coordinates
+    let sellerData = null;
+    let sellerLat = orderData.sellerLat || null; // Use from request first
+    let sellerLng = orderData.sellerLng || null; // Use from request first
+    
+    try {
+      const sellerDoc = await db.collection('sellers').doc(orderData.sellerId).get();
+      if (sellerDoc.exists) {
+        sellerData = sellerDoc.data();
+        // Use coordinates from database if not provided in request
+        if (!sellerLat) sellerLat = sellerData.pinLat || null;
+        if (!sellerLng) sellerLng = sellerData.pinLng || null;
+      }
+    } catch (error) {
+      console.error('Error fetching seller data:', error);
+    }
+
+    // Calculate distance between buyer and seller if coordinates are available
+    let distance = null;
+    if (orderData.buyerLat && orderData.buyerLng && sellerLat && sellerLng) {
+      distance = calculateDistance(orderData.buyerLat, orderData.buyerLng, sellerLat, sellerLng);
+      console.log(`[ORDER] Distance calculated: ${distance}km between buyer(${orderData.buyerLat}, ${orderData.buyerLng}) and seller(${sellerLat}, ${sellerLng})`);
+    } else {
+      console.log(`[ORDER] Cannot calculate distance - buyer coords: ${orderData.buyerLat}, ${orderData.buyerLng}, seller coords: ${sellerLat}, ${sellerLng}`);
+    }
+
     // Create new order
     // Determine statusProgress for new order
     let statusProgress = 'waiting_approval';
@@ -154,11 +196,26 @@ export async function POST(request) {
       status: 'pending',
       statusProgress, // <-- add statusProgress to Firestore
       deliveryAddress: orderData.deliveryAddress || '',
+      kelurahan: orderData.kelurahan || '',
+      kecamatan: orderData.kecamatan || '',
+      provinsi: orderData.provinsi || '',
+      kodepos: orderData.kodepos || '',
       notes: orderData.notes || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       pax: orderData.pax ? parseInt(orderData.pax) || 1 : 1, // Store pax if provided
       orderType: orderData.orderType || '', // Store OrderType if provided
+      // Add buyer coordinates
+      buyerLat: orderData.buyerLat || null,
+      buyerLng: orderData.buyerLng || null,
+      // Add seller coordinates from seller document
+      sellerLat: sellerLat,
+      sellerLng: sellerLng,
+      sellerName: sellerData?.outletName || sellerData?.name || null,
+      sellerAddress: sellerData?.address || null,
+      sellerPinAddress: sellerData?.pinAddress || null,
+      // Add calculated distance
+      distance: distance,
     };
 
     // Save to Firestore
