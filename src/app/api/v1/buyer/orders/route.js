@@ -205,6 +205,10 @@ export async function POST(request) {
       updatedAt: new Date().toISOString(),
       pax: orderData.pax ? parseInt(orderData.pax) || 1 : 1, // Store pax if provided
       orderType: orderData.orderType || '', // Store OrderType if provided
+      // Add date fields for Rantangan orders
+      startDate: orderData.startDate || null,
+      endDate: orderData.endDate || null,
+      packageType: orderData.packageType || null,
       // Add buyer coordinates
       buyerLat: orderData.buyerLat || null,
       buyerLng: orderData.buyerLng || null,
