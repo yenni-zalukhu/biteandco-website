@@ -76,7 +76,8 @@ export async function GET(req) {
         pinLat: data.pinLat || null,
         pinLng: data.pinLng || null,
         pinAddress: data.pinAddress || null,
-        distance: distance
+        distance: distance,
+        categories: data.categories || [] // Add categories data to the response
       };
     });
 
