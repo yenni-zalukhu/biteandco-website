@@ -1,6 +1,7 @@
 import { db } from '@/firebase/configure';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
 import { withCORSHeaders, handleOptions } from '@/lib/cors';
+import { sendOTPEmail } from '@/lib/email';
 
 function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000).toString();
@@ -47,17 +48,13 @@ export async function POST(request) {
       updatedAt: new Date().toISOString()
     });
 
-    // TODO: Send OTP email
-    // For now, just log it (will be implemented when email service is ready)
-    console.log(`OTP for ${email}: ${otp}`);
-    /* 
-    // Email sending code will be added here later
-    await sendEmail({
-      to: email,
-      subject: "Verify your email - BiteAndCo",
-      text: `Your OTP is: ${otp}`,
-    });
-    */
+    // Send OTP email
+    const emailSent = await sendOTPEmail(email, otp, name);
+    
+    if (!emailSent) {
+      // If email fails, still return success but log the error
+      console.error('Failed to send OTP email, but user registration completed');
+    }
 
     return withCORSHeaders(createSuccessResponse({
       userId: buyerRef.id

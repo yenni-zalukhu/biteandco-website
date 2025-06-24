@@ -1,6 +1,7 @@
 import { db } from '@/firebase/configure';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
 import { withCORSHeaders, handleOptions } from '@/lib/cors';
+import { sendWelcomeEmail } from '@/lib/email';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -49,6 +50,13 @@ export async function POST(request) {
       otpExpiry: null,
       updatedAt: new Date().toISOString()
     });
+
+    // Send welcome email
+    const welcomeEmailSent = await sendWelcomeEmail(buyerData.email, buyerData.name);
+    
+    if (!welcomeEmailSent) {
+      console.error('Failed to send welcome email, but verification completed');
+    }
 
     return withCORSHeaders(createSuccessResponse({
       message: 'Email verified successfully',

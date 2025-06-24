@@ -1,6 +1,7 @@
 import { db } from '@/firebase/configure';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
 import { withCORSHeaders, handleOptions } from '@/lib/cors';
+import { sendOTPEmail } from '@/lib/email';
 
 function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000).toString();
@@ -50,19 +51,14 @@ export async function POST(request) {
       updatedAt: new Date().toISOString()
     });
 
-    // TODO: Send OTP email
-    // For now, just log it (will be implemented when email service is ready)
-    console.log(`New OTP for ${email}: ${otp}`);
-    /* 
-    // Email sending code will be added here later
-    await sendEmail({
-      to: email,
-      subject: "Your new OTP - BiteAndCo",
-      text: `Your new OTP is: ${otp}`,
-    });
-    */
+    // Send new OTP email
+    const emailSent = await sendOTPEmail(email, otp, buyerData.name);
+    
+    if (!emailSent) {
+      console.error('Failed to send OTP email, but OTP was updated in database');
+    }
 
-    return withCORSHeaders(createSuccessResponse({ success: true }, 'OTP resent'));
+    return withCORSHeaders(createSuccessResponse({ success: true }, 'OTP resent successfully. Please check your email.'));
 
   } catch (error) {
     return withCORSHeaders(createErrorResponse(error.message || 'Internal server error'));
