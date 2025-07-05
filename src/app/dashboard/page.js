@@ -39,11 +39,11 @@ export default function DashboardOverview() {
           let activeSellers = 0
           let pendingApprovals = 0
 
-          console.log('Total documents in sellers collection:', snapshot.size)
+          // console.log('Total documents in sellers collection:', snapshot.size)
 
           snapshot.forEach((doc) => {
             const sellerData = doc.data()
-            console.log('Seller data:', { id: doc.id, status: sellerData.status })
+            // console.log('Seller data:', { id: doc.id, status: sellerData.status })
             
             totalSellers++
             if (sellerData.status === 'approved') {
@@ -72,7 +72,7 @@ export default function DashboardOverview() {
       const buyersUnsubscribe = onSnapshot(buyersRef, 
         (snapshot) => {
           const totalBuyers = snapshot.size
-          console.log('Total documents in buyers collection:', totalBuyers)
+          // console.log('Total documents in buyers collection:', totalBuyers)
 
           setStats(prevStats => ({
             ...prevStats,
@@ -100,16 +100,16 @@ export default function DashboardOverview() {
           const oneWeekAgo = new Date()
           oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
 
-          console.log('Total documents in orders collection:', snapshot.size)
+          // console.log('Total documents in orders collection:', snapshot.size)
 
           snapshot.forEach((doc) => {
             const orderData = doc.data()
-            console.log('Order data:', { 
-              id: doc.id, 
-              status: orderData.status, 
-              statusProgress: orderData.statusProgress, 
-              totalAmount: orderData.totalAmount 
-            })
+            // console.log('Order data:', { 
+            //   id: doc.id, 
+            //   status: orderData.status, 
+            //   statusProgress: orderData.statusProgress, 
+            //   totalAmount: orderData.totalAmount 
+            // })
             
             totalOrders++
             

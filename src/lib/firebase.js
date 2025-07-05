@@ -4,15 +4,15 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
-// Firebase configuration (using the same config as your React Native app)
+// Firebase configuration (using environment variables for security)
 const firebaseConfig = {
-  apiKey: "AIzaSyDnuqf_vlk9eit4bMUb6rw9ccYPlC01lVQ",
-  authDomain: "biteandco-a2591.firebaseapp.com",
-  projectId: "biteandco-a2591",
-  storageBucket: "biteandco-a2591.appspot.com",
-  messagingSenderId: "142048686691",
-  appId: "1:142048686691:web:ba57a6565d6a24c0657e56",
-  measurementId: "G-1TJQNK1ER8"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "your-firebase-api-key",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "biteandco-a2591.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "biteandco-a2591",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "biteandco-a2591.appspot.com",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "142048686691",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:142048686691:web:ba57a6565d6a24c0657e56",
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-1TJQNK1ER8"
 };
 
 // Initialize Firebase
@@ -30,7 +30,7 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   try {
     connectFirestoreEmulator(db, 'localhost', 8080);
   } catch (error) {
-    console.log('Firestore emulator connection failed or already connected');
+    // console.log('Firestore emulator connection failed or already connected');
   }
 }
 */

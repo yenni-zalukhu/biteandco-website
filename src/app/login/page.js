@@ -37,7 +37,6 @@ export default function LoginPage() {
         setError(result.error || 'Login failed. Please try again.')
       }
     } catch (error) {
-      console.error('Login error:', error)
       setError('Login failed. Please try again.')
     } finally {
       setLoading(false)
@@ -59,12 +58,7 @@ export default function LoginPage() {
             Access your dashboard with your admin credentials
           </p>
           
-          {/* Default credentials hint */}
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-700 text-center">
-              <strong>Default Admin:</strong> username: admin, password: admin123
-            </p>
-          </div>
+
         </div>
 
         {/* Login Form */}
@@ -137,23 +131,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200/60 rounded-2xl p-4">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-[#711330]" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">Demo Credentials</h3>
-                <div className="mt-1 text-sm text-slate-600">
-                  <p><strong>Username:</strong> admin</p>
-                  <p><strong>Password:</strong> admin123</p>
-                </div>
-              </div>
-            </div>
-          </div>
+
         </div>
 
         <p className="text-center text-xs text-slate-500">

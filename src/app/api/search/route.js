@@ -31,7 +31,7 @@ export async function GET(request) {
     const buyerLat = parseFloat(url.searchParams.get('buyerLat'));
     const buyerLng = parseFloat(url.searchParams.get('buyerLng'));
 
-    console.log('[SEARCH] Query:', query, 'Filter:', filter, 'Sort:', sortBy);
+    // console.log('[SEARCH] Query:', query, 'Filter:', filter, 'Sort:', sortBy);
 
     if (!query.trim()) {
       return withCORSHeaders(NextResponse.json({ results: [] }));
@@ -167,7 +167,7 @@ export async function GET(request) {
     // Limit results to 50 items
     searchResults = searchResults.slice(0, 50);
 
-    console.log(`[SEARCH] Found ${searchResults.length} results for "${query}"`);
+    // console.log(`[SEARCH] Found ${searchResults.length} results for "${query}"`);
 
     return withCORSHeaders(NextResponse.json({ 
       results: searchResults,

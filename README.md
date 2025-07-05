@@ -1,36 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# BiteAndCo Admin Dashboard
+
+A Next.js-based admin dashboard for managing the BiteAndCo food delivery platform, including seller approvals, order management, and analytics.
+
+## 🚀 Production Ready
+
+This application has been cleaned and prepared for production deployment with all debug code removed and security measures implemented.
+
+## Features
+
+- **Seller Management**: Approve/reject seller applications
+- **Order Management**: View and manage customer orders
+- **Analytics Dashboard**: Track business metrics and revenue
+- **Buyer Management**: View customer information
+- **Real-time Updates**: Live data synchronization with Firebase
+- **Secure Authentication**: Admin user management system
 
 ## Getting Started
 
-First, run the development server:
+### Development
+
+First, install dependencies:
+
+```bash
+npm install
+```
+
+Set up your environment variables by copying `.env.example` to `.env` and filling in your values:
+
+```bash
+cp .env.example .env
+```
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### Production Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**⚠️ Important:** Before deploying to production, please review the `PRODUCTION_CHECKLIST.md` file for required manual configuration steps.
 
-## Learn More
+1. **Build the application:**
+   ```bash
+   npm run build
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. **Test production build locally:**
+   ```bash
+   npm run start
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. **Deploy to your hosting platform**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Environment Variables
 
-## Deploy on Vercel
+Required environment variables for production:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# Midtrans Payment Gateway
+MIDTRANS_MODE=production
+MIDTRANS_PRODUCTION_SERVER_KEY=your_production_server_key
+MIDTRANS_PRODUCTION_CLIENT_KEY=your_production_client_key
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_production_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_production_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_production_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_production_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_production_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_production_app_id
+```
+
+## Security Notes
+
+- Default admin credentials have been removed for security
+- All debug code has been commented out
+- Admin users must be created manually through Firebase Console
+- Proper Firestore security rules should be configured
+
+## Tech Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Database**: Firebase Firestore
+- **Authentication**: Firebase Auth
+- **Payment**: Midtrans Payment Gateway
+- **Styling**: Tailwind CSS
+- **Icons**: Heroicons
+
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── dashboard/         # Admin dashboard pages
+│   ├── api/              # API routes
+│   └── login/            # Authentication
+├── components/           # Reusable components
+├── lib/                 # Utilities and configurations
+│   ├── firebase.js      # Firebase configuration
+│   ├── auth.js          # Authentication utilities
+│   └── email.js         # Email service
+└── config/              # App configuration
+```
+
+## Documentation
+
+- See `PRODUCTION_CHECKLIST.md` for production deployment guide
+- Check Firebase documentation for database setup
+- Review Midtrans documentation for payment integration
+
+## License
+
+© 2025 Bite&Co. All rights reserved.

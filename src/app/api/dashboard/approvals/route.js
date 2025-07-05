@@ -103,7 +103,7 @@ export async function POST(request) {
         // 2. Send approval email
         // 3. Create seller profile
         // 4. Log the action
-        console.log(`Approving seller: ${approval.sellerName}`)
+        // console.log(`Approving seller: ${approval.sellerName}`)
         
         return NextResponse.json({
           success: true,
@@ -120,7 +120,7 @@ export async function POST(request) {
         // 2. Send rejection email with reason
         // 3. Archive the application
         // 4. Log the action
-        console.log(`Rejecting seller: ${approval.sellerName}, reason: ${reason}`)
+        // console.log(`Rejecting seller: ${approval.sellerName}, reason: ${reason}`)
         
         return NextResponse.json({
           success: true,
@@ -134,7 +134,7 @@ export async function POST(request) {
 
       case 'request_info':
         // Request additional information
-        console.log(`Requesting additional info from: ${approval.sellerName}`)
+        // console.log(`Requesting additional info from: ${approval.sellerName}`)
         
         return NextResponse.json({
           success: true,

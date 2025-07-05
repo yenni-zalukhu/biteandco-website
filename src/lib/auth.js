@@ -15,16 +15,15 @@ try {
   // Next.js not available or we're in a different context
 }
 
-// Default admin credentials
-const DEFAULT_ADMIN = {
-  email: 'admin@biteandco.com',
-  password: 'admin123',
-  username: 'admin',
-  role: 'admin'
-}
+// Production: Default admin should be created manually
+// Remove or comment out automatic admin creation for production
 
-// Initialize default admin user
+// Initialize default admin user - DISABLED FOR PRODUCTION
 export const initializeDefaultAdmin = async () => {
+  // Production: Admin users should be created manually through proper setup
+  // This function is disabled for production security
+  return;
+  /*
   try {
     // Check if admin user already exists in Firestore
     const adminDoc = await getDoc(doc(db, 'admin_users', DEFAULT_ADMIN.username))
@@ -54,6 +53,7 @@ export const initializeDefaultAdmin = async () => {
   } catch (error) {
     console.error('Error initializing default admin:', error)
   }
+  */
 }
 
 // Admin login function
@@ -234,10 +234,10 @@ export function generateRequestId(prefix = 'req') {
 
 // Utility function to log API requests
 export function logApiRequest(requestId, method, path, data = {}) {
-  console.log(`[${requestId}] ${method} ${path}`, {
-    timestamp: new Date().toISOString(),
-    ...data
-  });
+  // console.log(`[${requestId}] ${method} ${path}`, {
+  //   timestamp: new Date().toISOString(),
+  //   ...data
+  // });
 }
 
 // Utility function to validate email

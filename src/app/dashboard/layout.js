@@ -100,15 +100,15 @@ export default function DashboardLayout({ children }) {
     if (!isClient) return
 
     const checkAuth = () => {
-      console.log('🔍 Checking authentication...')
+      // console.log('🔍 Checking authentication...')
       
       try {
         const storedUser = localStorage.getItem('bite-admin-user')
-        console.log('📋 Stored user:', storedUser)
+        // console.log('📋 Stored user:', storedUser)
         
         if (!storedUser) {
           // No user found, redirect to login
-          console.log('❌ No user found, redirecting to login')
+          // console.log('❌ No user found, redirecting to login')
           setLoading(false)
           router.replace('/login')
           return
@@ -117,7 +117,7 @@ export default function DashboardLayout({ children }) {
         const user = JSON.parse(storedUser)
         if (!user.username || !user.role) {
           // Invalid user data, redirect to login
-          console.log('❌ Invalid user data, redirecting to login')
+          // console.log('❌ Invalid user data, redirecting to login')
           localStorage.removeItem('bite-admin-user')
           setLoading(false)
           router.replace('/login')
@@ -125,7 +125,7 @@ export default function DashboardLayout({ children }) {
         }
         
         // Valid user found
-        console.log('✅ Valid user found:', user.username)
+        // console.log('✅ Valid user found:', user.username)
         setUser(user)
         setLoading(false)
       } catch (error) {
@@ -140,7 +140,7 @@ export default function DashboardLayout({ children }) {
     
     // Also set up Firebase auth listener as backup
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      console.log('🔥 Firebase auth state changed:', currentUser ? 'signed in' : 'signed out')
+      // console.log('🔥 Firebase auth state changed:', currentUser ? 'signed in' : 'signed out')
       if (!currentUser && isClient) {
         // Firebase user is signed out, clear local storage and redirect
         localStorage.removeItem('bite-admin-user')

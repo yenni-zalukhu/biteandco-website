@@ -21,11 +21,11 @@ export default function BuyersPage() {
         const unsubscribe = onSnapshot(buyersRef, 
           (snapshot) => {
             const buyersData = []
-            console.log('Total documents in buyers collection:', snapshot.size)
+            // console.log('Total documents in buyers collection:', snapshot.size)
             
             snapshot.forEach((doc) => {
               const buyerData = doc.data()
-              console.log('Buyer data:', { id: doc.id, name: buyerData.name, email: buyerData.email })
+              // console.log('Buyer data:', { id: doc.id, name: buyerData.name, email: buyerData.email })
               
               buyersData.push({
                 id: doc.id,
@@ -45,7 +45,7 @@ export default function BuyersPage() {
               })
             })
             
-            console.log('Found buyers:', buyersData.length)
+            // console.log('Found buyers:', buyersData.length)
             setBuyers(buyersData)
             setLoading(false)
             setError(null)

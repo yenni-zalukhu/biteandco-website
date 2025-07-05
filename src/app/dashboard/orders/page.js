@@ -66,7 +66,7 @@ export default function OrdersPage() {
         const unsubscribe = onSnapshot(ordersRef, 
           (snapshot) => {
             const ordersData = []
-            console.log('Total documents in orders collection:', snapshot.size)
+            // console.log('Total documents in orders collection:', snapshot.size)
             
             snapshot.forEach((doc) => {
               const orderData = doc.data()
@@ -101,7 +101,7 @@ export default function OrdersPage() {
               })
             })
             
-            console.log('Found orders:', ordersData.length)
+            // console.log('Found orders:', ordersData.length)
             setOrders(ordersData)
             setLoading(false)
             setError(null)

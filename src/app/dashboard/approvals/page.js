@@ -24,11 +24,11 @@ export default function ApprovalsPage() {
       const unsubscribe = onSnapshot(pendingQuery, 
         (snapshot) => {
           const approvalsData = []
-          console.log('Pending approvals found:', snapshot.size)
+          // console.log('Pending approvals found:', snapshot.size)
           
           snapshot.forEach((doc) => {
             const sellerData = doc.data()
-            console.log('Pending seller:', { id: doc.id, outletName: sellerData.outletName, status: sellerData.status })
+            // console.log('Pending seller:', { id: doc.id, outletName: sellerData.outletName, status: sellerData.status })
             
             approvalsData.push({
               id: doc.id,
@@ -152,7 +152,7 @@ export default function ApprovalsPage() {
       // Show success message
       alert(`Seller ${action === 'approve' ? 'approved' : 'rejected'} successfully!`)
       
-      console.log(`Seller ${approvalId} ${action}d successfully`)
+      // console.log(`Seller ${approvalId} ${action}d successfully`)
     } catch (error) {
       console.error('Error handling approval:', error)
       alert(`Failed to ${action} seller. Please try again.`)
