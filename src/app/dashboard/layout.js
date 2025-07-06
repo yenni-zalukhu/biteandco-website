@@ -3,9 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { onAuthStateChanged } from 'firebase/auth'
-import { auth } from '../../lib/firebase'
-import { adminLogout } from '../../lib/auth'
+import { adminLogout, getCurrentAdmin } from '../../lib/auth'
 
 const navigation = [
   { 
@@ -103,22 +101,11 @@ export default function DashboardLayout({ children }) {
       // console.log('🔍 Checking authentication...')
       
       try {
-        const storedUser = localStorage.getItem('bite-admin-user')
-        // console.log('📋 Stored user:', storedUser)
+        const user = getCurrentAdmin()
         
-        if (!storedUser) {
+        if (!user) {
           // No user found, redirect to login
           // console.log('❌ No user found, redirecting to login')
-          setLoading(false)
-          router.replace('/login')
-          return
-        }
-        
-        const user = JSON.parse(storedUser)
-        if (!user.username || !user.role) {
-          // Invalid user data, redirect to login
-          // console.log('❌ Invalid user data, redirecting to login')
-          localStorage.removeItem('bite-admin-user')
           setLoading(false)
           router.replace('/login')
           return
@@ -137,19 +124,6 @@ export default function DashboardLayout({ children }) {
     }
 
     checkAuth()
-    
-    // Also set up Firebase auth listener as backup
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // console.log('🔥 Firebase auth state changed:', currentUser ? 'signed in' : 'signed out')
-      if (!currentUser && isClient) {
-        // Firebase user is signed out, clear local storage and redirect
-        localStorage.removeItem('bite-admin-user')
-        setUser(null)
-        router.replace('/login')
-      }
-    })
-
-    return () => unsubscribe()
   }, [router, isClient])
 
   const handleLogout = async () => {

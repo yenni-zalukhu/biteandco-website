@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { adminLogin, initializeDefaultAdmin } from '../../lib/auth'
+import { adminLogin } from '../../lib/auth'
 import config from '../../config/config'
 
 export default function LoginPage() {
@@ -15,8 +15,7 @@ export default function LoginPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Initialize default admin user on page load
-    initializeDefaultAdmin()
+    // No Firebase initialization needed for simple login
   }, [])
 
   const handleSubmit = async (e) => {
