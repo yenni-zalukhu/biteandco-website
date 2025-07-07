@@ -1,56 +1,106 @@
 import jwt from 'jsonwebtoken';
+import { auth, db } from './firebase'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
+import { doc, setDoc, getDoc } from 'firebase/firestore'
 
-// Simple hardcoded admin credentials
-const ADMIN_CREDENTIALS = {
-  username: 'admin',
-  password: 'admin123',
+// NextResponse for API routes (only available in Next.js context)
+let NextResponse
+try {
+  if (typeof window === 'undefined') {
+    // We're on the server, try to import Next.js
+    const { NextResponse: NR } = require('next/server')
+    NextResponse = NR
+  }
+} catch (error) {
+  // Next.js not available or we're in a different context
+}
+
+// Default admin credentials
+const DEFAULT_ADMIN = {
   email: 'admin@biteandco.com',
+  password: 'admin123',
+  username: 'admin',
   role: 'admin'
 }
 
-// No Firebase initialization needed - disabled for simplicity
+// Initialize default admin user - DISABLED FOR PRODUCTION
 export const initializeDefaultAdmin = async () => {
-  // No Firebase setup required - using simple hardcoded login
+  // Production: Admin users should be created manually through proper setup
+  // This function is disabled for production security
   return;
 }
 
-// Simple admin login function (no Firebase required)
+// Admin login function
 export const adminLogin = async (username, password) => {
   try {
-    // Simple hardcoded check
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+    // Check if it's the default admin credentials
+    if (username === DEFAULT_ADMIN.username && password === DEFAULT_ADMIN.password) {
+      // Sign in with Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(
+        auth, 
+        DEFAULT_ADMIN.email, 
+        DEFAULT_ADMIN.password
+      )
+      
+      // Update last login time
+      await setDoc(doc(db, 'admin_users', username), {
+        lastLogin: new Date()
+      }, { merge: true })
+      
       return {
         success: true,
         user: {
-          username: ADMIN_CREDENTIALS.username,
-          email: ADMIN_CREDENTIALS.email,
-          role: ADMIN_CREDENTIALS.role,
-          uid: 'admin-user-id',
-          loginTime: new Date().toISOString()
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          username: username,
+          role: 'admin'
         }
       }
-    }
-
-    return {
-      success: false,
-      error: 'Invalid username or password'
+    } else {
+      // Check if user exists in Firestore
+      const adminDoc = await getDoc(doc(db, 'admin_users', username))
+      
+      if (!adminDoc.exists()) {
+        throw new Error('Invalid username or password')
+      }
+      
+      const adminData = adminDoc.data()
+      
+      // Sign in with Firebase Auth using email
+      const userCredential = await signInWithEmailAndPassword(
+        auth, 
+        adminData.email, 
+        password
+      )
+      
+      // Update last login time
+      await setDoc(doc(db, 'admin_users', username), {
+        lastLogin: new Date()
+      }, { merge: true })
+      
+      return {
+        success: true,
+        user: {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          username: username,
+          role: adminData.role
+        }
+      }
     }
   } catch (error) {
     console.error('Login error:', error)
     return {
       success: false,
-      error: 'Login failed'
+      error: error.message
     }
   }
 }
 
-// Simple admin logout function (no Firebase required)
+// Admin logout function
 export const adminLogout = async () => {
   try {
-    // Just clear localStorage - no Firebase signout needed
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('bite-admin-user')
-    }
+    await signOut(auth)
     return { success: true }
   } catch (error) {
     console.error('Logout error:', error)
@@ -58,28 +108,14 @@ export const adminLogout = async () => {
   }
 }
 
-// Get current admin user from localStorage
+// Get current admin user
 export const getCurrentAdmin = () => {
-  if (typeof window !== 'undefined') {
-    try {
-      const storedUser = localStorage.getItem('bite-admin-user')
-      if (storedUser) {
-        const user = JSON.parse(storedUser)
-        // Simple validation
-        if (user && user.username === ADMIN_CREDENTIALS.username && user.role === 'admin') {
-          return user
-        }
-      }
-    } catch (error) {
-      console.error('Error getting current admin:', error)
-    }
-  }
-  return null
+  return auth.currentUser
 }
+
 // Check if user is authenticated
 export const isAuthenticated = () => {
-  const user = getCurrentAdmin()
-  return user !== null
+  return !!auth.currentUser
 }
 
 // Legacy JWT functions for API routes

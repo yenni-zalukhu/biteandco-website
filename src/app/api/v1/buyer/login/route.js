@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { db } from '@/firebase/configure';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
