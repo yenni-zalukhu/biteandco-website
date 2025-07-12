@@ -15,6 +15,8 @@ const mapStatusToDisplayStatus = (paymentStatus, deliveryStatus) => {
       return 'delivered'
     } else if (deliveryStatus === 'in_progress' || deliveryStatus === 'preparing' || deliveryStatus === 'processing') {
       return 'confirmed'
+    } else if (deliveryStatus === 'awaiting_seller_approval') {
+      return 'awaiting_approval'
     } else {
       return 'pending'
     }
@@ -25,7 +27,7 @@ const mapStatusToDisplayStatus = (paymentStatus, deliveryStatus) => {
 export default function OrdersPage() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all') // all, pending, confirmed, delivered, cancelled
+  const [filter, setFilter] = useState('all') // all, pending, awaiting_approval, confirmed, delivered, cancelled
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState(null)
   const [updatingOrder, setUpdatingOrder] = useState(null) // Track which order is being updated
@@ -143,8 +145,19 @@ export default function OrdersPage() {
       switch (newStatus) {
         case 'confirmed':
           updateData.status = 'success' // Payment confirmed
-          updateData.statusProgress = 'processing' // Delivery status
-          console.log('Confirming payment for order:', orderId)
+          updateData.statusProgress = 'awaiting_seller_approval' // Go to seller approval first
+          console.log('Payment confirmed, awaiting seller approval for order:', orderId)
+          break
+        case 'awaiting_approval':
+          updateData.status = 'success' // Payment already confirmed
+          updateData.statusProgress = 'awaiting_seller_approval' // Explicitly set to awaiting approval
+          console.log('Setting order to awaiting seller approval:', orderId)
+          break
+        case 'approved':
+          updateData.status = 'success'
+          updateData.statusProgress = 'processing' // Now move to processing after approval
+          updateData.approvedAt = new Date()
+          console.log('Seller approved order, moving to processing:', orderId)
           break
         case 'delivered':
           updateData.status = 'success'
@@ -171,7 +184,19 @@ export default function OrdersPage() {
       console.log('Order status updated successfully')
       
       // Show success message
-      alert(`Order ${orderId} has been ${newStatus === 'confirmed' ? 'confirmed' : newStatus === 'delivered' ? 'marked as delivered' : newStatus}!`)
+      let successMessage = `Order ${orderId} has been updated!`
+      if (newStatus === 'confirmed') {
+        successMessage = `Payment confirmed for order ${orderId}. Awaiting seller approval.`
+      } else if (newStatus === 'awaiting_approval') {
+        successMessage = `Order ${orderId} is now awaiting seller approval.`
+      } else if (newStatus === 'approved') {
+        successMessage = `Order ${orderId} has been approved and is now processing.`
+      } else if (newStatus === 'delivered') {
+        successMessage = `Order ${orderId} has been marked as delivered.`
+      } else if (newStatus === 'cancelled') {
+        successMessage = `Order ${orderId} has been cancelled.`
+      }
+      alert(successMessage)
       
       // The real-time listener will automatically update the local state
     } catch (error) {
@@ -193,11 +218,22 @@ export default function OrdersPage() {
     return matchesFilter && matchesSearch
   })
 
+  const getFilterDisplayText = (status) => {
+    switch (status) {
+      case 'awaiting_approval':
+        return 'Awaiting Approval'
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1)
+    }
+  }
+
   const getStatusBadge = (status) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
     switch (status) {
       case 'pending':
         return `${baseClasses} bg-yellow-600 text-white`
+      case 'awaiting_approval':
+        return `${baseClasses} bg-orange-600 text-white`
       case 'confirmed':
         return `${baseClasses} bg-blue-600 text-white`
       case 'delivered':
@@ -215,6 +251,12 @@ export default function OrdersPage() {
         return (
           <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
+          </svg>
+        )
+      case 'awaiting_approval':
+        return (
+          <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
           </svg>
         )
       case 'confirmed': 
@@ -396,6 +438,44 @@ export default function OrdersPage() {
               </button>
             </div>
           )}
+          {order.status === 'awaiting_approval' && (
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleStatusChange(order.id, 'cancelled')}
+                disabled={updatingOrder === order.id}
+                className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-xs leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updatingOrder === order.id ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-gray-700" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Rejecting...
+                  </>
+                ) : (
+                  'Reject'
+                )}
+              </button>
+              <button
+                onClick={() => handleStatusChange(order.id, 'approved')}
+                disabled={updatingOrder === order.id}
+                className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updatingOrder === order.id ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Approving...
+                  </>
+                ) : (
+                  'Approve Order'
+                )}
+              </button>
+            </div>
+          )}
           {order.status === 'confirmed' && (
             <button
               onClick={() => handleStatusChange(order.id, 'delivered')}
@@ -468,7 +548,7 @@ export default function OrdersPage() {
       {/* Filters and Search */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4">
         <div className="flex space-x-2">
-          {['all', 'pending', 'confirmed', 'delivered', 'cancelled'].map((status) => (
+          {['all', 'pending', 'awaiting_approval', 'confirmed', 'delivered', 'cancelled'].map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
@@ -478,7 +558,7 @@ export default function OrdersPage() {
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {getStatusIcon(status)} {status.charAt(0).toUpperCase() + status.slice(1)}
+              {getStatusIcon(status)} {getFilterDisplayText(status)}
               {status !== 'all' && (
                 <span className="ml-1 bg-gray-200 text-gray-600 py-0.5 px-1.5 rounded-full text-xs">
                   {orders.filter(o => o.status === status).length}

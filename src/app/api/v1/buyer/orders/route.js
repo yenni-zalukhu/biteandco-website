@@ -148,8 +148,13 @@ export async function POST(request) {
     const orderData = await request.json();
 
     // Validate order data
-    if (!orderData.sellerId || !orderData.items || !orderData.totalAmount) {
+    if (!orderData.sellerId || !orderData.items || (orderData.totalAmount === undefined || orderData.totalAmount === null)) {
       return wrapCORS(createErrorResponse('Seller ID, items, and total amount are required', 400));
+    }
+
+    // Allow totalAmount of 0 for BiteEco orders
+    if (orderData.totalAmount < 0) {
+      return wrapCORS(createErrorResponse('Total amount cannot be negative', 400));
     }
 
     // Fetch seller data to get seller coordinates
@@ -225,7 +230,31 @@ export async function POST(request) {
     // Save to Firestore
     const orderRef = await db.collection('orders').add(newOrder);
 
-    // Midtrans Snap integration
+    // Handle BiteEco orders differently - they don't need payment
+    if (orderData.orderType === 'Bite Eco' || orderData.totalAmount === 0) {
+      // For BiteEco orders, set status to awaiting seller approval without payment
+      await db.collection('orders').doc(orderRef.id).update({
+        status: 'success', // Payment considered successful (free)
+        statusProgress: 'awaiting_seller_approval', // Go directly to seller approval
+        paymentMethod: 'Free - Bite Eco',
+        paymentStatus: 'success'
+      });
+
+      return wrapCORS(createSuccessResponse({
+        orderId: orderRef.id,
+        order: {
+          id: orderRef.id,
+          ...newOrder,
+          status: 'success',
+          statusProgress: 'awaiting_seller_approval',
+          paymentMethod: 'Free - Bite Eco',
+          paymentStatus: 'success'
+        },
+        message: 'BiteEco order created successfully. Awaiting seller approval.'
+      }, 'BiteEco order created successfully'));
+    }
+
+    // For regular orders, proceed with Midtrans payment
     let isProduction = false;
     let serverKey = process.env.MIDTRANS_SANDBOX_SERVER_KEY;
     if (process.env.MIDTRANS_MODE === 'production') {
