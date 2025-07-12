@@ -190,14 +190,30 @@ export default function SellersPage() {
   }, [rawSellers, orders, calculateSellerStats, loading])
 
   const handleStatusChange = async (sellerId, newStatus) => {
+    const seller = sellers.find(s => s.id === sellerId)
+    const statusText = newStatus === 'active' ? 'approve' : 'reject'
+    
+    if (!confirm(`Are you sure you want to ${statusText} ${seller?.name}?`)) {
+      return
+    }
+
     try {
       const sellerRef = doc(db, 'sellers', sellerId)
       await updateDoc(sellerRef, {
         status: newStatus === 'active' ? 'approved' : 
                 newStatus === 'suspended' ? 'rejected' : 'pending',
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        // Add admin action tracking
+        adminAction: {
+          action: statusText,
+          timestamp: new Date(),
+          adminId: 'admin' // You can replace this with actual admin ID if available
+        }
       })
+      
+      alert(`Seller ${statusText}ed successfully!`)
     } catch (error) {
+      console.error('Error updating seller status:', error)
       alert('Failed to update seller status. Please try again.')
     }
   }
@@ -369,9 +385,36 @@ export default function SellersPage() {
                         <h4 className="text-lg font-semibold text-gray-900 truncate">
                           {seller.name}
                         </h4>
-                        <span className={getStatusBadge(seller.status)}>
-                          {seller.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={getStatusBadge(seller.status)}>
+                            {seller.status}
+                          </span>
+                          {/* Action buttons for pending sellers */}
+                          {seller.status === 'pending' && (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => handleStatusChange(seller.id, 'active')}
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-green-600 text-white hover:bg-green-700 transition-colors"
+                                title="Approve Seller"
+                              >
+                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleStatusChange(seller.id, 'suspended')}
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                title="Reject Seller"
+                              >
+                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="space-y-1 text-xs text-gray-600">

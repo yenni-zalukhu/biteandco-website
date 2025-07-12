@@ -13,7 +13,7 @@ const mapStatusToDisplayStatus = (paymentStatus, deliveryStatus) => {
   if (paymentStatus === 'success') {
     if (deliveryStatus === 'completed') {
       return 'delivered'
-    } else if (deliveryStatus === 'in_progress' || deliveryStatus === 'preparing') {
+    } else if (deliveryStatus === 'in_progress' || deliveryStatus === 'preparing' || deliveryStatus === 'processing') {
       return 'confirmed'
     } else {
       return 'pending'
@@ -28,6 +28,7 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState('all') // all, pending, confirmed, delivered, cancelled
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState(null)
+  const [updatingOrder, setUpdatingOrder] = useState(null) // Track which order is being updated
 
   // Move calculateOrderTotal function here so it's available during useEffect
   const calculateOrderTotal = (items, pax = 1) => {
@@ -128,6 +129,9 @@ export default function OrdersPage() {
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
+      setUpdatingOrder(orderId) // Set loading state
+      console.log(`Updating order ${orderId} to status: ${newStatus}`)
+      
       // Update order status in Firebase
       const orderRef = doc(db, 'orders', orderId)
       
@@ -140,16 +144,19 @@ export default function OrdersPage() {
         case 'confirmed':
           updateData.status = 'success' // Payment confirmed
           updateData.statusProgress = 'processing' // Delivery status
+          console.log('Confirming payment for order:', orderId)
           break
         case 'delivered':
           updateData.status = 'success'
           updateData.statusProgress = 'completed'
           updateData.deliveredAt = new Date()
+          console.log('Marking order as delivered:', orderId)
           break
         case 'cancelled':
           updateData.status = 'failed'
           updateData.statusProgress = 'cancelled'
           updateData.cancelledAt = new Date()
+          console.log('Cancelling order:', orderId)
           break
         case 'pending':
           updateData.status = 'pending'
@@ -159,12 +166,21 @@ export default function OrdersPage() {
           updateData.status = newStatus
       }
       
+      console.log('Update data:', updateData)
       await updateDoc(orderRef, updateData)
+      console.log('Order status updated successfully')
+      
+      // Show success message
+      alert(`Order ${orderId} has been ${newStatus === 'confirmed' ? 'confirmed' : newStatus === 'delivered' ? 'marked as delivered' : newStatus}!`)
       
       // The real-time listener will automatically update the local state
     } catch (error) {
       console.error('Error updating order status:', error)
-      alert('Failed to update order status. Please try again.')
+      console.error('Order ID:', orderId)
+      console.error('New Status:', newStatus)
+      alert(`Failed to update order status: ${error.message}. Please try again.`)
+    } finally {
+      setUpdatingOrder(null) // Clear loading state
     }
   }
 
@@ -346,24 +362,57 @@ export default function OrdersPage() {
             <div className="flex space-x-2">
               <button
                 onClick={() => handleStatusChange(order.id, 'cancelled')}
-                className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-xs leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                disabled={updatingOrder === order.id}
+                className="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-xs leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancel
+                {updatingOrder === order.id ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-gray-700" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Cancelling...
+                  </>
+                ) : (
+                  'Cancel'
+                )}
               </button>
               <button
                 onClick={() => handleStatusChange(order.id, 'confirmed')}
-                className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-[#711330] hover:bg-[#8b1538]"
+                disabled={updatingOrder === order.id}
+                className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-[#711330] hover:bg-[#8b1538] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Confirm
+                {updatingOrder === order.id ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Confirming...
+                  </>
+                ) : (
+                  'Confirm Payment'
+                )}
               </button>
             </div>
           )}
           {order.status === 'confirmed' && (
             <button
               onClick={() => handleStatusChange(order.id, 'delivered')}
-              className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+              disabled={updatingOrder === order.id}
+              className="inline-flex items-center px-3 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Mark Delivered
+              {updatingOrder === order.id ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Delivering...
+                </>
+              ) : (
+                'Mark Delivered'
+              )}
             </button>
           )}
         </div>
