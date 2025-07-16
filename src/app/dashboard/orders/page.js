@@ -255,9 +255,36 @@ export default function OrdersPage() {
   const getFilterDisplayText = (status) => {
     switch (status) {
       case 'awaiting_approval':
-        return 'Awaiting Approval'
+        return 'Menunggu Persetujuan'
       case 'awaiting_payment':
-        return 'Awaiting Payment'
+        return 'Menunggu Pembayaran'
+      case 'confirmed':
+        return 'Dikonfirmasi'
+      case 'delivered':
+        return 'Selesai'
+      case 'cancelled':
+        return 'Dibatalkan'
+      case 'pending':
+        return 'Pending'
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1)
+    }
+  }
+
+  const getStatusDisplayText = (status) => {
+    switch (status) {
+      case 'awaiting_approval':
+        return 'Menunggu Persetujuan'
+      case 'awaiting_payment':
+        return 'Menunggu Pembayaran'
+      case 'confirmed':
+        return 'Dikonfirmasi'
+      case 'delivered':
+        return 'Selesai'
+      case 'cancelled':
+        return 'Dibatalkan'
+      case 'pending':
+        return 'Pending'
       default:
         return status.charAt(0).toUpperCase() + status.slice(1)
     }
@@ -342,7 +369,7 @@ export default function OrdersPage() {
           </div>
           <div className="text-right">
             <span className={getStatusBadge(order.status)}>
-              {getStatusIcon(order.status)} {order.status}
+              {getStatusIcon(order.status)} {getStatusDisplayText(order.status)}
             </span>
             <p className="text-sm text-gray-500 mt-1">
               {new Date(order.orderDate).toLocaleString()}
