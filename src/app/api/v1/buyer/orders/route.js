@@ -161,6 +161,21 @@ export async function POST(request) {
 
     const buyerId = buyerData.id;
     console.log('[DEBUG][POST] Buyer ID:', buyerId);
+    
+    // Fetch buyer data from database to get complete profile
+    let fullBuyerData = null;
+    try {
+      const buyerDoc = await db.collection('buyers').doc(buyerId).get();
+      if (buyerDoc.exists) {
+        fullBuyerData = buyerDoc.data();
+      } else {
+        return wrapCORS(createErrorResponse('Buyer not found', 404));
+      }
+    } catch (error) {
+      console.error('Error fetching buyer data:', error);
+      return wrapCORS(createErrorResponse('Error fetching buyer data', 500));
+    }
+    
     const orderData = await request.json();
     console.log('[DEBUG][POST] Order data received:', JSON.stringify(orderData, null, 2));
 
@@ -202,18 +217,15 @@ export async function POST(request) {
       console.log(`[ORDER] Cannot calculate distance - buyer coords: ${orderData.buyerLat}, ${orderData.buyerLng}, seller coords: ${sellerLat}, ${sellerLng}`);
     }
 
-    // Create new order
-    // Determine statusProgress for new order
-    let statusProgress = 'waiting_approval';
-    // Default: waiting_approval -> processing -> delivery -> completed
-    if ('pending' === 'pending') {
-      statusProgress = 'waiting_approval';
-    }
+    // Create new order  
+    // New orders always start with awaiting seller approval
+    let statusProgress = 'awaiting_seller_approval';
+    
     const newOrder = {
       buyerId,
-      buyerName: buyerData.name,
-      buyerEmail: buyerData.email,
-      buyerPhone: buyerData.phone,
+      buyerName: fullBuyerData.name || '',
+      buyerEmail: fullBuyerData.email || buyerData.email,
+      buyerPhone: fullBuyerData.phone || '',
       sellerId: orderData.sellerId,
       items: orderData.items,
       totalAmount: orderData.totalAmount,
