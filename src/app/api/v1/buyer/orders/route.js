@@ -141,19 +141,23 @@ export async function POST(request) {
     console.log('[DEBUG][POST] verifyBuyerToken result:', auth);
     
     if (auth.error) {
+      console.log('[DEBUG][POST] Auth error:', auth.error, 'Status:', auth.status);
       return wrapCORS(createErrorResponse(auth.error, auth.status));
     }
 
     const { buyerId, buyerData } = auth;
     const orderData = await request.json();
+    console.log('[DEBUG][POST] Order data received:', JSON.stringify(orderData, null, 2));
 
     // Validate order data
     if (!orderData.sellerId || !orderData.items || (orderData.totalAmount === undefined || orderData.totalAmount === null)) {
+      console.log('[DEBUG][POST] Validation failed - missing required fields');
       return wrapCORS(createErrorResponse('Seller ID, items, and total amount are required', 400));
     }
 
     // Allow totalAmount of 0 for BiteEco orders
     if (orderData.totalAmount < 0) {
+      console.log('[DEBUG][POST] Validation failed - negative amount');
       return wrapCORS(createErrorResponse('Total amount cannot be negative', 400));
     }
 
@@ -230,81 +234,35 @@ export async function POST(request) {
     // Save to Firestore
     const orderRef = await db.collection('orders').add(newOrder);
 
-    // Handle BiteEco orders differently - they don't need payment
-    if (orderData.orderType === 'Bite Eco' || orderData.totalAmount === 0) {
-      // For BiteEco orders, set status to awaiting seller approval without payment
-      await db.collection('orders').doc(orderRef.id).update({
-        status: 'success', // Payment considered successful (free)
-        statusProgress: 'awaiting_seller_approval', // Go directly to seller approval
-        paymentMethod: 'Free - Bite Eco',
-        paymentStatus: 'success'
-      });
-
-      return wrapCORS(createSuccessResponse({
-        orderId: orderRef.id,
-        order: {
-          id: orderRef.id,
-          ...newOrder,
-          status: 'success',
-          statusProgress: 'awaiting_seller_approval',
-          paymentMethod: 'Free - Bite Eco',
-          paymentStatus: 'success'
-        },
-        message: 'BiteEco order created successfully. Awaiting seller approval.'
-      }, 'BiteEco order created successfully'));
-    }
-
-    // For regular orders, proceed with Midtrans payment
-    let isProduction = false;
-    let serverKey = process.env.MIDTRANS_SANDBOX_SERVER_KEY;
-    if (process.env.MIDTRANS_MODE === 'production') {
-      isProduction = true;
-      serverKey = process.env.MIDTRANS_PRODUCTION_SERVER_KEY;
-    }
-    let snap = new midtransClient.Snap({
-      isProduction,
-      serverKey,
-    });
-    const parameter = {
-      transaction_details: {
-        order_id: orderRef.id,
-        gross_amount: orderData.totalAmount,
-      },
-      credit_card: {
-        secure: true,
-      },
-      customer_details: {
-        first_name: buyerData.name,
-        email: buyerData.email,
-        phone: buyerData.phone,
-      },
-    };
-    let snapResponse;
-    try {
-      snapResponse = await snap.createTransaction(parameter);
-    } catch (err) {
-      return wrapCORS(createErrorResponse('Failed to create Midtrans transaction: ' + err.message, 500));
-    }
-
-    // Save snapUrl to Firestore order document
+    // NEW FLOW: All orders go to seller approval first
     await db.collection('orders').doc(orderRef.id).update({
-      snapUrl: snapResponse.redirect_url,
-      snapToken: snapResponse.token,
+      status: 'pending', // Order created but not paid yet
+      statusProgress: 'awaiting_seller_approval', // Go directly to seller approval
+      paymentStatus: 'pending' // Payment will be processed after seller approval
     });
+
+    // For BiteEco orders (free), mark payment as not needed
+    if (orderData.orderType === 'Bite Eco' || orderData.totalAmount === 0) {
+      await db.collection('orders').doc(orderRef.id).update({
+        paymentMethod: 'Free - Bite Eco',
+        paymentStatus: 'not_required' // Special status for free orders
+      });
+    }
 
     return wrapCORS(createSuccessResponse({
       orderId: orderRef.id,
+      message: 'Order created successfully. Waiting for seller approval.',
       order: {
         id: orderRef.id,
         ...newOrder,
-        snapUrl: snapResponse.redirect_url,
-        snapToken: snapResponse.token,
-      },
-      snapUrl: snapResponse.redirect_url,
-      snapToken: snapResponse.token,
+        status: 'pending',
+        statusProgress: 'awaiting_seller_approval',
+        paymentStatus: orderData.orderType === 'Bite Eco' || orderData.totalAmount === 0 ? 'not_required' : 'pending'
+      }
     }, 'Order created successfully'));
 
   } catch (error) {
+    console.error('Error creating order:', error);
     return wrapCORS(createErrorResponse(error.message || 'Internal server error'));
   }
 }
