@@ -37,14 +37,22 @@ export async function GET(request) {
     console.log('[DEBUG][GET] MIDTRANS_PRODUCTION_SERVER_KEY:', process.env.MIDTRANS_PRODUCTION_SERVER_KEY);
 
     // Verify buyer token
-    const auth = await verifyBuyerToken(request);
-    console.log('[DEBUG][GET] verifyBuyerToken result:', auth);
-    
-    if (auth.error) {
-      return wrapCORS(createErrorResponse(auth.error, auth.status));
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return wrapCORS(createErrorResponse('Authorization header required', 401));
     }
 
-    const { buyerId } = auth;
+    const token = authHeader.substring(7);
+    let buyerData;
+    try {
+      buyerData = verifyBuyerToken(token);
+    } catch (err) {
+      console.log('[DEBUG][GET] Token verification error:', err);
+      return wrapCORS(createErrorResponse('Invalid or expired token', 401));
+    }
+
+    const buyerId = buyerData.id;
+    console.log('[DEBUG][GET] Buyer ID:', buyerId);
 
     // Get buyer's orders from Firestore
     const ordersSnapshot = await db.collection('orders')
@@ -137,15 +145,22 @@ export async function POST(request) {
     console.log('[DEBUG][POST] MIDTRANS_PRODUCTION_SERVER_KEY:', process.env.MIDTRANS_PRODUCTION_SERVER_KEY);
 
     // Verify buyer token
-    const auth = await verifyBuyerToken(request);
-    console.log('[DEBUG][POST] verifyBuyerToken result:', auth);
-    
-    if (auth.error) {
-      console.log('[DEBUG][POST] Auth error:', auth.error, 'Status:', auth.status);
-      return wrapCORS(createErrorResponse(auth.error, auth.status));
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return wrapCORS(createErrorResponse('Authorization header required', 401));
     }
 
-    const { buyerId, buyerData } = auth;
+    const token = authHeader.substring(7);
+    let buyerData;
+    try {
+      buyerData = verifyBuyerToken(token);
+    } catch (err) {
+      console.log('[DEBUG][POST] Token verification error:', err);
+      return wrapCORS(createErrorResponse('Invalid or expired token', 401));
+    }
+
+    const buyerId = buyerData.id;
+    console.log('[DEBUG][POST] Buyer ID:', buyerId);
     const orderData = await request.json();
     console.log('[DEBUG][POST] Order data received:', JSON.stringify(orderData, null, 2));
 

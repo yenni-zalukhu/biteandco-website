@@ -12,12 +12,20 @@ export async function OPTIONS() {
 export async function POST(request) {
   try {
     // Verify buyer token
-    const auth = await verifyBuyerToken(request);
-    if (auth.error) {
-      return withCORSHeaders(createErrorResponse(auth.error, auth.status));
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return withCORSHeaders(createErrorResponse('Authorization header required', 401));
     }
 
-    const { buyerId, buyerData } = auth;
+    const token = authHeader.substring(7);
+    let buyerData;
+    try {
+      buyerData = verifyBuyerToken(token);
+    } catch (err) {
+      return withCORSHeaders(createErrorResponse('Invalid or expired token', 401));
+    }
+
+    const buyerId = buyerData.id;
     const { rating, review, orderId, sellerId } = await request.json();
 
     // Validate input

@@ -19,14 +19,24 @@ export async function GET(request, { params }) {
     }
 
     // Verify buyer token
-    const auth = await verifyBuyerToken(request);
-    if (auth.error) {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return withCORSHeaders(
-        NextResponse.json({ error: auth.error }, { status: auth.status || 401 })
+        NextResponse.json({ error: "Authorization header required" }, { status: 401 })
       );
     }
 
-    const { buyerId } = auth;
+    const token = authHeader.substring(7);
+    let buyerData;
+    try {
+      buyerData = verifyBuyerToken(token);
+    } catch (err) {
+      return withCORSHeaders(
+        NextResponse.json({ error: "Invalid or expired token" }, { status: 401 })
+      );
+    }
+
+    const buyerId = buyerData.id;
 
     // Get order details
     const orderDoc = await db.collection("orders").doc(orderId).get();
