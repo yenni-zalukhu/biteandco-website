@@ -2,7 +2,15 @@ import { createErrorResponse } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
 import { db } from '@/firebase/configure';
 
-export async function verifyBuyerToken(request) {
+export function verifyBuyerToken(token) {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  return {
+    id: decoded.buyerId,
+    email: decoded.email || decoded.buyerEmail
+  };
+}
+
+export async function verifyBuyerTokenFromRequest(request) {
   try {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

@@ -1,6 +1,7 @@
-import { wrapCORS, createSuccessResponse, createErrorResponse } from '../../../../lib/corsHandler';
-import { db } from '../../../../lib/firebase';
-import { verifySellerJWT } from '../../../../lib/jwtUtils';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+import { createSuccessResponse, createErrorResponse } from '@/lib/auth';
+import { db } from '@/lib/firebase';
+import { verifySellerToken } from '@/middleware/sellerAuth';
 import midtransClient from 'midtrans-client';
 
 export async function POST(request) {
@@ -8,44 +9,44 @@ export async function POST(request) {
   const { orderId, action, rejectionReason } = reqData; // action: 'approve' or 'reject'
 
   if (!orderId || !action) {
-    return wrapCORS(createErrorResponse('Order ID and action are required', 400));
+    return withCORSHeaders(createErrorResponse('Order ID and action are required', 400));
   }
 
   if (!['approve', 'reject'].includes(action)) {
-    return wrapCORS(createErrorResponse('Action must be approve or reject', 400));
+    return withCORSHeaders(createErrorResponse('Action must be approve or reject', 400));
   }
 
   try {
     // Verify seller authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return wrapCORS(createErrorResponse('Authorization header required', 401));
+      return withCORSHeaders(createErrorResponse('Authorization header required', 401));
     }
 
     const token = authHeader.substring(7);
     let sellerData;
     try {
-      sellerData = verifySellerJWT(token);
+      sellerData = verifySellerToken(token);
     } catch (err) {
-      return wrapCORS(createErrorResponse('Invalid or expired token', 401));
+      return withCORSHeaders(createErrorResponse('Invalid or expired token', 401));
     }
 
     // Get the order
     const orderDoc = await db.collection('orders').doc(orderId).get();
     if (!orderDoc.exists) {
-      return wrapCORS(createErrorResponse('Order not found', 404));
+      return withCORSHeaders(createErrorResponse('Order not found', 404));
     }
 
     const orderData = orderDoc.data();
 
     // Verify this seller owns the order
     if (orderData.sellerId !== sellerData.id) {
-      return wrapCORS(createErrorResponse('You can only manage your own orders', 403));
+      return withCORSHeaders(createErrorResponse('You can only manage your own orders', 403));
     }
 
     // Check if order is in correct status
     if (orderData.statusProgress !== 'awaiting_seller_approval') {
-      return wrapCORS(createErrorResponse('Order is not awaiting seller approval', 400));
+      return withCORSHeaders(createErrorResponse('Order is not awaiting seller approval', 400));
     }
 
     if (action === 'reject') {
@@ -57,7 +58,7 @@ export async function POST(request) {
         updatedAt: new Date().toISOString()
       });
 
-      return wrapCORS(createSuccessResponse({
+      return withCORSHeaders(createSuccessResponse({
         orderId,
         message: 'Order rejected successfully'
       }));
@@ -74,7 +75,7 @@ export async function POST(request) {
           updatedAt: new Date().toISOString()
         });
 
-        return wrapCORS(createSuccessResponse({
+        return withCORSHeaders(createSuccessResponse({
           orderId,
           message: 'BiteEco order approved successfully',
           paymentRequired: false
@@ -114,7 +115,7 @@ export async function POST(request) {
         snapResponse = await snap.createTransaction(parameter);
       } catch (err) {
         console.error('Midtrans error:', err);
-        return wrapCORS(createErrorResponse('Failed to create payment link: ' + err.message, 500));
+        return withCORSHeaders(createErrorResponse('Failed to create payment link: ' + err.message, 500));
       }
 
       // Update order with payment link and approved status
@@ -126,7 +127,7 @@ export async function POST(request) {
         updatedAt: new Date().toISOString()
       });
 
-      return wrapCORS(createSuccessResponse({
+      return withCORSHeaders(createSuccessResponse({
         orderId,
         message: 'Order approved successfully. Payment link generated.',
         paymentRequired: true,
@@ -137,6 +138,8 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error processing seller action:', error);
-    return wrapCORS(createErrorResponse(error.message || 'Internal server error', 500));
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error', 500));
   }
 }
+
+export const OPTIONS = handleOptions;

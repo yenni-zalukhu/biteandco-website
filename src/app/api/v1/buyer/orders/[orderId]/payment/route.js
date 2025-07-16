@@ -1,40 +1,41 @@
-import { wrapCORS, createSuccessResponse, createErrorResponse } from '../../../../../lib/corsHandler';
-import { db } from '../../../../../lib/firebase';
-import { verifyBuyerJWT } from '../../../../../lib/jwtUtils';
+import { withCORSHeaders, handleOptions } from '@/lib/cors';
+import { createSuccessResponse, createErrorResponse } from '@/lib/auth';
+import { db } from '@/lib/firebase';
+import { verifyBuyerToken } from '@/middleware/buyerAuth';
 
 export async function GET(request, { params }) {
   const { orderId } = params;
 
   if (!orderId) {
-    return wrapCORS(createErrorResponse('Order ID is required', 400));
+    return withCORSHeaders(createErrorResponse('Order ID is required', 400));
   }
 
   try {
     // Verify buyer authentication
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return wrapCORS(createErrorResponse('Authorization header required', 401));
+      return withCORSHeaders(createErrorResponse('Authorization header required', 401));
     }
 
     const token = authHeader.substring(7);
     let buyerData;
     try {
-      buyerData = verifyBuyerJWT(token);
+      buyerData = verifyBuyerToken(token);
     } catch (err) {
-      return wrapCORS(createErrorResponse('Invalid or expired token', 401));
+      return withCORSHeaders(createErrorResponse('Invalid or expired token', 401));
     }
 
     // Get the order
     const orderDoc = await db.collection('orders').doc(orderId).get();
     if (!orderDoc.exists) {
-      return wrapCORS(createErrorResponse('Order not found', 404));
+      return withCORSHeaders(createErrorResponse('Order not found', 404));
     }
 
     const orderData = orderDoc.data();
 
     // Verify this buyer owns the order
     if (orderData.buyerEmail !== buyerData.email) {
-      return wrapCORS(createErrorResponse('You can only view your own orders', 403));
+      return withCORSHeaders(createErrorResponse('You can only view your own orders', 403));
     }
 
     // Check order status and return appropriate response
@@ -73,10 +74,12 @@ export async function GET(request, { params }) {
       response.message = 'Order status updated.';
     }
 
-    return wrapCORS(createSuccessResponse(response));
+    return withCORSHeaders(createSuccessResponse(response));
 
   } catch (error) {
     console.error('Error getting order payment status:', error);
-    return wrapCORS(createErrorResponse(error.message || 'Internal server error', 500));
+    return withCORSHeaders(createErrorResponse(error.message || 'Internal server error', 500));
   }
 }
+
+export const OPTIONS = handleOptions;
