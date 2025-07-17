@@ -1,10 +1,12 @@
 import { withCORSHeaders, handleOptions } from '@/lib/cors';
 import { createSuccessResponse, createErrorResponse } from '@/lib/auth';
-import { db } from '@/lib/firebase';
+import { db } from '@/firebase/configure';
 import { verifyBuyerToken } from '@/middleware/buyerAuth';
 
 export async function GET(request, { params }) {
   const { orderId } = params;
+
+  console.log('Payment status request for order:', orderId);
 
   if (!orderId) {
     return withCORSHeaders(createErrorResponse('Order ID is required', 400));
@@ -26,12 +28,28 @@ export async function GET(request, { params }) {
     }
 
     // Get the order
-    const orderDoc = await db.collection('orders').doc(orderId).get();
+    let orderDoc;
+    try {
+      orderDoc = await db.collection('orders').doc(orderId).get();
+    } catch (dbError) {
+      console.error('Database connection error:', dbError);
+      return withCORSHeaders(createErrorResponse('Database connection failed', 500));
+    }
+    
     if (!orderDoc.exists) {
       return withCORSHeaders(createErrorResponse('Order not found', 404));
     }
 
     const orderData = orderDoc.data();
+
+    console.log('Order payment data:', {
+      orderId,
+      status: orderData.status,
+      statusProgress: orderData.statusProgress,
+      paymentStatus: orderData.paymentStatus,
+      hasSnapUrl: !!orderData.snapUrl,
+      buyerEmail: orderData.buyerEmail
+    });
 
     // Verify this buyer owns the order
     if (orderData.buyerEmail !== buyerData.email) {
