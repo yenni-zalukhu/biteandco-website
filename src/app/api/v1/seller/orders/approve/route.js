@@ -67,12 +67,12 @@ export async function POST(request) {
     }
 
     // Check if order is in correct status for the action
-    if (action === 'approve' && orderData.statusProgress !== 'awaiting_seller_approval') {
-      return withCORSHeaders(createErrorResponse('Order is not awaiting seller approval', 400));
+    if (action === 'approve' && !['awaiting_seller_approval', 'waiting_approval'].includes(orderData.statusProgress)) {
+      return withCORSHeaders(createErrorResponse(`Order is not awaiting seller approval. Current status: ${orderData.statusProgress}`, 400));
     }
 
-    if (action === 'reject' && !['awaiting_seller_approval', 'approved_awaiting_payment', 'pending'].includes(orderData.statusProgress)) {
-      return withCORSHeaders(createErrorResponse('Order cannot be rejected in current status', 400));
+    if (action === 'reject' && !['awaiting_seller_approval', 'waiting_approval', 'approved_awaiting_payment', 'pending'].includes(orderData.statusProgress)) {
+      return withCORSHeaders(createErrorResponse(`Order cannot be rejected in current status: ${orderData.statusProgress}`, 400));
     }
 
     if (action === 'reject') {
