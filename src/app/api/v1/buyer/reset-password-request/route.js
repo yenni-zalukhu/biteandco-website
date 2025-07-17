@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/firebase/configure';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import { withCORSHeaders, handleOptions } from '@/lib/cors';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
+import nodemailer from 'nodemailer';
 
 // Generate 6-digit OTP
 function generateOTP() {
@@ -12,8 +12,6 @@ function generateOTP() {
 // Send OTP email using the same email system as registration
 async function sendResetOTPEmail(email, otp, name) {
   try {
-    const nodemailer = require('nodemailer');
-    
     // Email configuration using Hostinger SMTP
     const emailConfig = {
       host: 'smtp.hostinger.com',
@@ -26,7 +24,7 @@ async function sendResetOTPEmail(email, otp, name) {
     };
 
     // Create transporter
-    const transporter = nodemailer.createTransporter(emailConfig);
+    const transporter = nodemailer.createTransport(emailConfig);
 
     const mailOptions = {
       from: {
