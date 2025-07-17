@@ -8,6 +8,8 @@ export async function POST(request) {
   const reqData = await request.json();
   const { orderId, action, rejectionReason } = reqData; // action: 'approve' or 'reject'
 
+  console.log('Seller approve/reject request:', { orderId, action, rejectionReason });
+
   if (!orderId || !action) {
     return withCORSHeaders(createErrorResponse('Order ID and action are required', 400));
   }
@@ -52,14 +54,25 @@ export async function POST(request) {
 
     const orderData = orderDoc.data();
 
+    console.log('Order data:', { 
+      orderId, 
+      currentStatus: orderData.statusProgress, 
+      sellerId: orderData.sellerId,
+      requestedAction: action 
+    });
+
     // Verify this seller owns the order
     if (orderData.sellerId !== sellerData.id) {
       return withCORSHeaders(createErrorResponse('You can only manage your own orders', 403));
     }
 
-    // Check if order is in correct status
-    if (orderData.statusProgress !== 'awaiting_seller_approval') {
+    // Check if order is in correct status for the action
+    if (action === 'approve' && orderData.statusProgress !== 'awaiting_seller_approval') {
       return withCORSHeaders(createErrorResponse('Order is not awaiting seller approval', 400));
+    }
+
+    if (action === 'reject' && !['awaiting_seller_approval', 'approved_awaiting_payment', 'pending'].includes(orderData.statusProgress)) {
+      return withCORSHeaders(createErrorResponse('Order cannot be rejected in current status', 400));
     }
 
     if (action === 'reject') {
