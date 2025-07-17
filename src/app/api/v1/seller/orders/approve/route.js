@@ -1,6 +1,6 @@
 import { withCORSHeaders, handleOptions } from '@/lib/cors';
 import { createSuccessResponse, createErrorResponse } from '@/lib/auth';
-import { db } from '@/lib/firebase';
+import { db } from '@/firebase/configure';
 import { verifySellerToken } from '@/middleware/sellerAuth';
 import midtransClient from 'midtrans-client';
 
@@ -24,15 +24,28 @@ export async function POST(request) {
     }
 
     const token = authHeader.substring(7);
-    let sellerData;
+    let authResult;
     try {
-      sellerData = verifySellerToken(token);
+      authResult = await verifySellerToken(token);
     } catch (err) {
       return withCORSHeaders(createErrorResponse('Invalid or expired token', 401));
     }
 
+    if (authResult.error) {
+      return withCORSHeaders(createErrorResponse(authResult.error, authResult.status));
+    }
+
+    const sellerData = authResult.sellerData;
+
     // Get the order
-    const orderDoc = await db.collection('orders').doc(orderId).get();
+    let orderDoc;
+    try {
+      orderDoc = await db.collection('orders').doc(orderId).get();
+    } catch (dbError) {
+      console.error('Database connection error:', dbError);
+      return withCORSHeaders(createErrorResponse('Database connection failed', 500));
+    }
+    
     if (!orderDoc.exists) {
       return withCORSHeaders(createErrorResponse('Order not found', 404));
     }

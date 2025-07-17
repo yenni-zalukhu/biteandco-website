@@ -2,14 +2,21 @@ import { createErrorResponse } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
 import { db } from '@/firebase/configure';
 
-export async function verifySellerToken(request) {
+export async function verifySellerToken(tokenOrRequest) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return { error: 'No token provided', status: 401 };
+    let token;
+    
+    // Handle both token string and request object
+    if (typeof tokenOrRequest === 'string') {
+      token = tokenOrRequest;
+    } else {
+      const authHeader = tokenOrRequest.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return { error: 'No token provided', status: 401 };
+      }
+      token = authHeader.split('Bearer ')[1];
     }
 
-    const token = authHeader.split('Bearer ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Get seller data from Firestore
@@ -37,7 +44,13 @@ export async function verifySellerToken(request) {
 
   } catch (error) {
     console.error('Seller token verification error:', error);
-    return { error: 'Invalid token', status: 401 };
+    if (error.name === 'JsonWebTokenError') {
+      return { error: 'Invalid token format', status: 401 };
+    } else if (error.name === 'TokenExpiredError') {
+      return { error: 'Token expired', status: 401 };
+    } else {
+      return { error: 'Token verification failed', status: 401 };
+    }
   }
 }
 

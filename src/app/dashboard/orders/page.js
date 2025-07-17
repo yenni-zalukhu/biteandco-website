@@ -7,37 +7,27 @@ import { safeToISOString } from '../../../lib/dateUtils'
 
 // Map payment status and delivery status to display status
 const mapStatusToDisplayStatus = (paymentStatus, deliveryStatus) => {
-  // Handle new approval flow: Check delivery status first for awaiting_seller_approval
-  if (deliveryStatus === 'awaiting_seller_approval') {
-    return 'awaiting_approval'
-  }
-  
   if (paymentStatus === 'failed' || deliveryStatus === 'cancelled') {
     return 'cancelled'
   }
-  
   if (paymentStatus === 'success') {
     if (deliveryStatus === 'completed') {
       return 'delivered'
     } else if (deliveryStatus === 'in_progress' || deliveryStatus === 'preparing' || deliveryStatus === 'processing') {
       return 'confirmed'
+    } else if (deliveryStatus === 'awaiting_seller_approval') {
+      return 'awaiting_approval'
     } else {
       return 'pending'
     }
   }
-  
-  // Handle approved but awaiting payment
-  if (deliveryStatus === 'approved_awaiting_payment') {
-    return 'awaiting_payment'
-  }
-  
   return 'pending'
 }
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all') // all, pending, awaiting_approval, awaiting_payment, confirmed, delivered, cancelled
+  const [filter, setFilter] = useState('all') // all, pending, awaiting_approval, confirmed, delivered, cancelled
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState(null)
   const [updatingOrder, setUpdatingOrder] = useState(null) // Track which order is being updated
@@ -144,47 +134,7 @@ export default function OrdersPage() {
       setUpdatingOrder(orderId) // Set loading state
       console.log(`Updating order ${orderId} to status: ${newStatus}`)
       
-      // For approve/reject actions, use the new seller approval API
-      if (newStatus === 'approved' || newStatus === 'cancelled') {
-        const action = newStatus === 'approved' ? 'approve' : 'reject';
-        const rejectionReason = newStatus === 'cancelled' ? 'Rejected by seller' : undefined;
-        
-        const response = await fetch('/api/v1/seller/orders/approve', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            orderId: orderId,
-            action: action,
-            rejectionReason: rejectionReason
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to update order status');
-        }
-
-        const result = await response.json();
-        console.log('Order approval result:', result);
-        
-        // Success message
-        let successMessage;
-        if (newStatus === 'approved') {
-          if (result.paymentRequired) {
-            successMessage = `Order ${orderId} approved! Payment link sent to buyer.`;
-          } else {
-            successMessage = `Order ${orderId} approved! No payment required.`;
-          }
-        } else {
-          successMessage = `Order ${orderId} has been rejected.`;
-        }
-        
-        alert(successMessage);
-        return;
-      }
-
-      // For other status changes, use direct Firestore update
+      // Update order status in Firebase
       const orderRef = doc(db, 'orders', orderId)
       
       // Map display status to appropriate fields
@@ -195,19 +145,31 @@ export default function OrdersPage() {
       switch (newStatus) {
         case 'confirmed':
           updateData.status = 'success' // Payment confirmed
-          updateData.statusProgress = 'processing' // Start processing after payment
-          console.log('Payment confirmed, moving to processing for order:', orderId)
+          updateData.statusProgress = 'awaiting_seller_approval' // Go to seller approval first
+          console.log('Payment confirmed, awaiting seller approval for order:', orderId)
           break
         case 'awaiting_approval':
           updateData.status = 'success' // Payment already confirmed
           updateData.statusProgress = 'awaiting_seller_approval' // Explicitly set to awaiting approval
           console.log('Setting order to awaiting seller approval:', orderId)
           break
+        case 'approved':
+          updateData.status = 'success'
+          updateData.statusProgress = 'processing' // Now move to processing after approval
+          updateData.approvedAt = new Date()
+          console.log('Seller approved order, moving to processing:', orderId)
+          break
         case 'delivered':
           updateData.status = 'success'
           updateData.statusProgress = 'completed'
           updateData.deliveredAt = new Date()
           console.log('Marking order as delivered:', orderId)
+          break
+        case 'cancelled':
+          updateData.status = 'failed'
+          updateData.statusProgress = 'cancelled'
+          updateData.cancelledAt = new Date()
+          console.log('Cancelling order:', orderId)
           break
         case 'pending':
           updateData.status = 'pending'
@@ -227,8 +189,12 @@ export default function OrdersPage() {
         successMessage = `Payment confirmed for order ${orderId}. Awaiting seller approval.`
       } else if (newStatus === 'awaiting_approval') {
         successMessage = `Order ${orderId} is now awaiting seller approval.`
+      } else if (newStatus === 'approved') {
+        successMessage = `Order ${orderId} has been approved and is now processing.`
       } else if (newStatus === 'delivered') {
         successMessage = `Order ${orderId} has been marked as delivered.`
+      } else if (newStatus === 'cancelled') {
+        successMessage = `Order ${orderId} has been cancelled.`
       }
       alert(successMessage)
       
@@ -255,36 +221,7 @@ export default function OrdersPage() {
   const getFilterDisplayText = (status) => {
     switch (status) {
       case 'awaiting_approval':
-        return 'Menunggu Persetujuan'
-      case 'awaiting_payment':
-        return 'Menunggu Pembayaran'
-      case 'confirmed':
-        return 'Dikonfirmasi'
-      case 'delivered':
-        return 'Selesai'
-      case 'cancelled':
-        return 'Dibatalkan'
-      case 'pending':
-        return 'Pending'
-      default:
-        return status.charAt(0).toUpperCase() + status.slice(1)
-    }
-  }
-
-  const getStatusDisplayText = (status) => {
-    switch (status) {
-      case 'awaiting_approval':
-        return 'Menunggu Persetujuan'
-      case 'awaiting_payment':
-        return 'Menunggu Pembayaran'
-      case 'confirmed':
-        return 'Dikonfirmasi'
-      case 'delivered':
-        return 'Selesai'
-      case 'cancelled':
-        return 'Dibatalkan'
-      case 'pending':
-        return 'Pending'
+        return 'Awaiting Approval'
       default:
         return status.charAt(0).toUpperCase() + status.slice(1)
     }
@@ -297,8 +234,6 @@ export default function OrdersPage() {
         return `${baseClasses} bg-yellow-600 text-white`
       case 'awaiting_approval':
         return `${baseClasses} bg-orange-600 text-white`
-      case 'awaiting_payment':
-        return `${baseClasses} bg-purple-600 text-white`
       case 'confirmed':
         return `${baseClasses} bg-blue-600 text-white`
       case 'delivered':
@@ -322,13 +257,6 @@ export default function OrdersPage() {
         return (
           <svg className="w-4 h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-          </svg>
-        )
-      case 'awaiting_payment':
-        return (
-          <svg className="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4z"/>
-            <path d="M6 6a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V6zm4 2a1 1 0 000 2h4a1 1 0 100-2h-4z"/>
           </svg>
         )
       case 'confirmed': 
@@ -369,7 +297,7 @@ export default function OrdersPage() {
           </div>
           <div className="text-right">
             <span className={getStatusBadge(order.status)}>
-              {getStatusIcon(order.status)} {getStatusDisplayText(order.status)}
+              {getStatusIcon(order.status)} {order.status}
             </span>
             <p className="text-sm text-gray-500 mt-1">
               {new Date(order.orderDate).toLocaleString()}
@@ -620,7 +548,7 @@ export default function OrdersPage() {
       {/* Filters and Search */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 sm:space-x-4">
         <div className="flex space-x-2">
-          {['all', 'pending', 'awaiting_approval', 'awaiting_payment', 'confirmed', 'delivered', 'cancelled'].map((status) => (
+          {['all', 'pending', 'awaiting_approval', 'confirmed', 'delivered', 'cancelled'].map((status) => (
             <button
               key={status}
               onClick={() => setFilter(status)}
