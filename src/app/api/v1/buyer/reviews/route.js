@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/firebase/configure";
-import { verifyBuyerToken } from '@/middleware/buyerAuth';
+import { verifyBuyerTokenFromRequest } from '@/middleware/buyerAuth';
 import { withCORSHeaders, handleOptions } from '@/lib/cors';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
 
@@ -11,21 +11,14 @@ export async function OPTIONS() {
 // POST: Create a new review
 export async function POST(request) {
   try {
-    // Verify buyer token
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return withCORSHeaders(createErrorResponse('Authorization header required', 401));
+    // Verify buyer token and get buyer data
+    const auth = await verifyBuyerTokenFromRequest(request);
+    
+    if (auth.error) {
+      return withCORSHeaders(createErrorResponse(auth.error, auth.status));
     }
 
-    const token = authHeader.substring(7);
-    let buyerData;
-    try {
-      buyerData = verifyBuyerToken(token);
-    } catch (err) {
-      return withCORSHeaders(createErrorResponse('Invalid or expired token', 401));
-    }
-
-    const buyerId = buyerData.id;
+    const { buyerId, buyerData } = auth;
     const { rating, review, orderId, sellerId } = await request.json();
 
     // Validate input
@@ -64,7 +57,7 @@ export async function POST(request) {
       rating: parseInt(rating),
       review: review.trim(),
       buyerId: buyerId,
-      buyerName: buyerData.name,
+      buyerName: buyerData.name || buyerData.email || 'Anonymous User',
       sellerId: sellerId,
       orderId: orderId,
       createdAt: new Date().toISOString(),

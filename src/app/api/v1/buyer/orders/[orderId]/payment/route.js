@@ -2,6 +2,7 @@ import { withCORSHeaders, handleOptions } from '@/lib/cors';
 import { createSuccessResponse, createErrorResponse } from '@/lib/auth';
 import { db } from '@/firebase/configure';
 import { verifyBuyerToken } from '@/middleware/buyerAuth';
+import midtransClient from 'midtrans-client';
 
 export async function POST(request, { params }) {
   const { orderId } = params;
@@ -48,7 +49,8 @@ export async function POST(request, { params }) {
       statusProgress: orderData.statusProgress,
       paymentStatus: orderData.paymentStatus,
       hasSnapUrl: !!orderData.snapUrl,
-      buyerEmail: orderData.buyerEmail
+      buyerEmail: orderData.buyerEmail,
+      totalAmount: orderData.totalAmount
     });
 
     // Verify this buyer owns the order
@@ -62,7 +64,7 @@ export async function POST(request, { params }) {
     }
 
     // If snapUrl already exists, return it
-    if (orderData.snapUrl) {
+    if (orderData.snapUrl && orderData.snapToken) {
       return withCORSHeaders(createSuccessResponse({
         orderId,
         snapUrl: orderData.snapUrl,
@@ -72,9 +74,97 @@ export async function POST(request, { params }) {
       }));
     }
 
-    // If no snapUrl, generate new payment link (this would typically involve Midtrans API)
-    // For now, we'll return an error asking them to wait
-    return withCORSHeaders(createErrorResponse('Payment link is being generated. Please try again in a moment.', 422));
+    // Generate new Midtrans payment link
+    try {
+      console.log('Generating new Midtrans payment link for order:', orderId);
+      
+      // Setup Midtrans configuration
+      let serverKey = process.env.MIDTRANS_SANDBOX_SERVER_KEY;
+      let isProduction = false;
+      if (process.env.MIDTRANS_MODE === 'production') {
+        isProduction = true;
+        serverKey = process.env.MIDTRANS_PRODUCTION_SERVER_KEY;
+      }
+
+      if (!serverKey) {
+        console.error('Midtrans server key not configured');
+        return withCORSHeaders(createErrorResponse('Payment system not configured', 500));
+      }
+
+      const snap = new midtransClient.Snap({
+        isProduction,
+        serverKey
+      });
+
+      // Prepare transaction details
+      const transactionDetails = {
+        order_id: orderId,
+        gross_amount: orderData.totalAmount || 50000, // Default amount if not set
+      };
+
+      const customerDetails = {
+        first_name: orderData.buyerName || buyerData.name || 'Customer',
+        email: orderData.buyerEmail || buyerData.email,
+        phone: orderData.buyerPhone || '08123456789',
+      };
+
+      // Prepare items detail
+      const itemDetails = orderData.items?.map((item, index) => ({
+        id: `item_${index + 1}`,
+        price: Math.round((item.price || 0) * (item.quantity || 1)),
+        quantity: item.quantity || 1,
+        name: item.menuName || item.name || `Item ${index + 1}`,
+      })) || [{
+        id: 'default_item',
+        price: orderData.totalAmount || 50000,
+        quantity: 1,
+        name: 'Food Order',
+      }];
+
+      const parameter = {
+        transaction_details: transactionDetails,
+        customer_details: customerDetails,
+        item_details: itemDetails,
+        credit_card: {
+          secure: true
+        },
+        callbacks: {
+          finish: `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.biteandco.id'}/payment-success?order_id=${orderId}`,
+          error: `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.biteandco.id'}/payment-error?order_id=${orderId}`,
+          pending: `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.biteandco.id'}/payment-pending?order_id=${orderId}`,
+        }
+      };
+
+      console.log('Midtrans payment parameter:', JSON.stringify(parameter, null, 2));
+
+      // Create Snap transaction
+      const transaction = await snap.createTransaction(parameter);
+      
+      console.log('Midtrans transaction created:', {
+        token: transaction.token,
+        redirect_url: transaction.redirect_url
+      });
+
+      // Update order with payment information
+      await orderDoc.ref.update({
+        snapToken: transaction.token,
+        snapUrl: transaction.redirect_url,
+        paymentStatus: 'pending',
+        updatedAt: new Date().toISOString(),
+      });
+
+      return withCORSHeaders(createSuccessResponse({
+        orderId,
+        snapUrl: transaction.redirect_url,
+        snapToken: transaction.token,
+        paymentRequired: true,
+        message: 'Payment link generated successfully'
+      }));
+
+    } catch (midtransError) {
+      console.error('Midtrans error:', midtransError);
+      return withCORSHeaders(createErrorResponse('Failed to generate payment link: ' + midtransError.message, 500));
+    }
 
   } catch (error) {
     console.error('Error initiating payment:', error);
