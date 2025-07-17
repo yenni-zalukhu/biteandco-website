@@ -17,20 +17,6 @@ export async function POST(request) {
       return withCORSHeaders(createErrorResponse('Email and password are required', 400));
     }
 
-    // Check if OTP was verified
-    const otpStore = global.otpStore || {};
-    const storedOTP = otpStore[email];
-
-    if (!storedOTP || !storedOTP.verified) {
-      return withCORSHeaders(createErrorResponse('OTP not verified', 400));
-    }
-
-    // Check if OTP is expired
-    if (new Date() > storedOTP.expiresAt) {
-      delete otpStore[email];
-      return withCORSHeaders(createErrorResponse('OTP has expired', 400));
-    }
-
     // Find buyer document
     const buyersSnapshot = await db.collection('buyers')
       .where('email', '==', email)
@@ -42,20 +28,41 @@ export async function POST(request) {
 
     // Get buyer document
     const buyerDoc = buyersSnapshot.docs[0];
+    const buyerData = buyerDoc.data();
     const buyerId = buyerDoc.id;
+
+    // Check if OTP was verified
+    if (!buyerData.resetOtpVerified) {
+      return withCORSHeaders(createErrorResponse('OTP not verified', 400));
+    }
+
+    // Check if OTP is expired
+    if (buyerData.resetOtpExpiry) {
+      const expiryTime = new Date(buyerData.resetOtpExpiry);
+      if (new Date() > expiryTime) {
+        // Clean up expired OTP
+        await db.collection('buyers').doc(buyerId).update({
+          resetOtp: null,
+          resetOtpExpiry: null,
+          resetOtpVerified: false,
+          updatedAt: new Date().toISOString(),
+        });
+        return withCORSHeaders(createErrorResponse('OTP has expired', 400));
+      }
+    }
 
     // Hash the new password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password in database
+    // Update password in database and clean up OTP data
     await db.collection('buyers').doc(buyerId).update({
       password: hashedPassword,
+      resetOtp: null,
+      resetOtpExpiry: null,
+      resetOtpVerified: false,
       updatedAt: new Date().toISOString(),
     });
-
-    // Clean up OTP store
-    delete otpStore[email];
 
     return withCORSHeaders(createSuccessResponse({
       message: 'Password reset successfully'

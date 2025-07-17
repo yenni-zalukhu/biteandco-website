@@ -118,13 +118,19 @@ export async function POST(request) {
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-    // Store OTP in memory or database (for demo, we'll use memory)
-    // In production, use Redis or database
-    global.otpStore = global.otpStore || {};
-    global.otpStore[email] = {
-      otp,
-      expiresAt,
-    };
+    // Store OTP in database temporarily (better for serverless)
+    const buyerDocRef = buyersSnapshot.docs[0];
+    const buyerId = buyerDocRef.id;
+    
+    // Update buyer document with OTP data
+    await db.collection('buyers').doc(buyerId).update({
+      resetOtp: otp,
+      resetOtpExpiry: expiresAt.toISOString(),
+      resetOtpVerified: false,
+      updatedAt: new Date().toISOString(),
+    });
+
+    console.log('Stored OTP in database for email:', email, 'OTP:', otp, 'Expires:', expiresAt);
 
     // Send OTP via email
     const emailSent = await sendResetOTPEmail(email, otp, buyerData.name);

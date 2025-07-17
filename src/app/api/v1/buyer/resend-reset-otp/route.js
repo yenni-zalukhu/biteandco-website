@@ -111,17 +111,19 @@ export async function POST(request) {
     // Get buyer data
     const buyerDoc = buyersSnapshot.docs[0];
     const buyerData = buyerDoc.data();
+    const buyerId = buyerDoc.id;
 
     // Generate new OTP
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-    // Update OTP in store
-    global.otpStore = global.otpStore || {};
-    global.otpStore[email] = {
-      otp,
-      expiresAt,
-    };
+    // Update buyer document with new OTP data
+    await db.collection('buyers').doc(buyerId).update({
+      resetOtp: otp,
+      resetOtpExpiry: expiresAt.toISOString(),
+      resetOtpVerified: false,
+      updatedAt: new Date().toISOString(),
+    });
 
     // Send OTP via email
     const emailSent = await sendResetOTPEmail(email, otp, buyerData.name);
