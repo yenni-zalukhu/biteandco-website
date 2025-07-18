@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/firebase/configure';
 import { createErrorResponse, createSuccessResponse } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { withCORSHeaders, handleOptions } from '@/lib/cors';
 
 export async function OPTIONS() {
@@ -35,8 +36,18 @@ export async function POST(request) {
     }
 
     // Verify password
-    // Note: In production, use proper password hashing comparison
-    if (buyerData.password !== password) {
+    let passwordValid = false;
+    
+    // Check if password is hashed (bcrypt hashes start with $2a$, $2b$, etc.)
+    if (buyerData.password && buyerData.password.startsWith('$2')) {
+      // Compare with bcrypt for hashed passwords
+      passwordValid = await bcrypt.compare(password, buyerData.password);
+    } else {
+      // Direct comparison for plain text passwords (legacy)
+      passwordValid = buyerData.password === password;
+    }
+
+    if (!passwordValid) {
       return withCORSHeaders(createErrorResponse('Email atau password salah', 401));
     }
 
