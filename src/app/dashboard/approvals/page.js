@@ -9,6 +9,7 @@ export default function ApprovalsPage() {
   const [pendingApprovals, setPendingApprovals] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [selectedImage, setSelectedImage] = useState(null)
 
   useEffect(() => {
     const unsubscribe = setupRealtimeApprovals()
@@ -17,9 +18,9 @@ export default function ApprovalsPage() {
 
   const setupRealtimeApprovals = () => {
     try {
-      // Query sellers that are pending approval
+      // Query sellers that are pending approval or recently processed
       const sellersRef = collection(db, 'sellers')
-      const pendingQuery = query(sellersRef, where('status', 'in', ['pending', 'under_review']))
+      const pendingQuery = query(sellersRef, where('status', 'in', ['pending', 'under_review', 'ready_for_approval']))
       
       const unsubscribe = onSnapshot(pendingQuery, 
         (snapshot) => {
@@ -30,6 +31,24 @@ export default function ApprovalsPage() {
             const sellerData = doc.data()
             // console.log('Pending seller:', { id: doc.id, outletName: sellerData.outletName, status: sellerData.status })
             
+            // Get menu items from categories
+            const menuItems = []
+            if (sellerData.categories && Array.isArray(sellerData.categories)) {
+              sellerData.categories.forEach(category => {
+                if (category.items && Array.isArray(category.items)) {
+                  category.items.forEach(item => {
+                    menuItems.push({
+                      name: item.name || 'Unknown Item',
+                      description: item.description || 'No description',
+                      price: item.price || 0,
+                      image: item.image || null,
+                      category: category.name || 'Unknown Category'
+                    })
+                  })
+                }
+              })
+            }
+
             approvalsData.push({
               id: doc.id,
               type: 'seller_registration',
@@ -48,6 +67,7 @@ export default function ApprovalsPage() {
               storeIcon: sellerData.storeIcon || null,
               storeBanner: sellerData.storeBanner || null,
               categories: sellerData.categories || [],
+              menuItems: menuItems,
               status: sellerData.status || 'pending'
             })
           })
@@ -60,9 +80,7 @@ export default function ApprovalsPage() {
           console.error('Error fetching pending approvals:', error)
           setError('Failed to load pending approvals')
           setLoading(false)
-          
-          // Fallback to mock data if Firebase fails
-          fetchPendingApprovals()
+          setPendingApprovals([])
         }
       )
       
@@ -71,68 +89,7 @@ export default function ApprovalsPage() {
       console.error('Error setting up realtime approvals:', error)
       setError('Failed to setup real-time data')
       setLoading(false)
-      fetchPendingApprovals()
-    }
-  }
-
-  const fetchPendingApprovals = async () => {
-    try {
-      // Mock data - replace with actual API call
-      const mockApprovals = [
-        {
-          id: 1,
-          type: 'seller_registration',
-          sellerId: 2,
-          sellerName: 'Kedai Nusantara',
-          email: 'nusantara@email.com',
-          phone: '+62 813-9876-5432',
-          businessName: 'Kedai Nusantara',
-          category: 'Indonesian Food',
-          location: 'Bandung, Jawa Barat',
-          description: 'Authentic Indonesian cuisine with traditional recipes passed down through generations.',
-          submittedAt: '2024-06-20T10:30:00Z',
-          documents: [
-            { name: 'Business License', url: '/docs/business-license.pdf', verified: false },
-            { name: 'Health Certificate', url: '/docs/health-cert.pdf', verified: true },
-            { name: 'Tax Registration', url: '/docs/tax-reg.pdf', verified: false }
-          ],
-          menuItems: [
-            { name: 'Nasi Gudeg', price: 15000, description: 'Traditional Yogyakarta jackfruit curry' },
-            { name: 'Rendang', price: 25000, description: 'Slow-cooked beef in coconut curry' },
-            { name: 'Gado-gado', price: 12000, description: 'Indonesian vegetable salad with peanut sauce' }
-          ],
-          status: 'under_review'
-        },
-        {
-          id: 2,
-          type: 'seller_registration',
-          sellerId: 6,
-          sellerName: 'Warung Bahari',
-          email: 'bahari@email.com',
-          phone: '+62 814-5555-9999',
-          businessName: 'Warung Bahari Seafood',
-          category: 'Seafood',
-          location: 'Jakarta Utara',
-          description: 'Fresh seafood restaurant specializing in grilled fish and seafood dishes.',
-          submittedAt: '2024-06-21T14:15:00Z',
-          documents: [
-            { name: 'Business License', url: '/docs/business-license-2.pdf', verified: true },
-            { name: 'Health Certificate', url: '/docs/health-cert-2.pdf', verified: true },
-            { name: 'Tax Registration', url: '/docs/tax-reg-2.pdf', verified: true }
-          ],
-          menuItems: [
-            { name: 'Grilled Snapper', price: 45000, description: 'Fresh snapper grilled with Indonesian spices' },
-            { name: 'Seafood Platter', price: 85000, description: 'Mixed seafood with rice and vegetables' },
-            { name: 'Fish Soup', price: 20000, description: 'Clear fish soup with vegetables' }
-          ],
-          status: 'ready_for_approval'
-        }
-      ]
-      setPendingApprovals(mockApprovals)
-      setLoading(false)
-    } catch (error) {
-      console.error('Error fetching pending approvals:', error)
-      setLoading(false)
+      setPendingApprovals([])
     }
   }
 
@@ -159,6 +116,29 @@ export default function ApprovalsPage() {
     }
   }
 
+  const ImageModal = ({ imageUrl, onClose }) => {
+    if (!imageUrl) return null
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={onClose}>
+        <div className="max-w-4xl max-h-full p-4">
+          <img
+            src={imageUrl}
+            alt="Document"
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-white text-2xl font-bold hover:text-gray-300"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const ApprovalCard = ({ approval }) => (
     <div className="bg-white shadow rounded-lg overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-200">
@@ -170,15 +150,31 @@ export default function ApprovalsPage() {
           </div>
           <div className="text-right">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              approval.status === 'ready_for_approval' 
+              approval.status === 'ready_for_approval' || approval.status === 'approved'
                 ? 'bg-green-600 text-white' 
+                : approval.status === 'rejected'
+                ? 'bg-red-600 text-white'
                 : 'bg-yellow-600 text-white'
             }`}>
-              {approval.status.replace('_', ' ')}
+              {approval.status.replace(/_/g, ' ').toUpperCase()}
             </span>
             <p className="text-xs text-gray-500 mt-1">
               Submitted: {new Date(approval.submittedAt).toLocaleDateString()}
             </p>
+            
+            {/* Quick info badges */}
+            <div className="flex flex-wrap gap-1 mt-2">
+              {approval.menuItems && approval.menuItems.length > 0 && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800">
+                  {approval.menuItems.length} menu items
+                </span>
+              )}
+              {approval.ktpImageUrl && approval.selfieImageUrl && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-800">
+                  Documents complete
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -202,10 +198,83 @@ export default function ApprovalsPage() {
 
           {/* Documents */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-3">Documents</h4>
-            <div className="space-y-2">
-              {approval.documents.map((doc, index) => (
-                <div key={index} className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Documents & Images</h4>
+            <div className="space-y-3">
+              {/* KTP Image */}
+              {approval.ktpImageUrl && (
+                <div className="flex items-center justify-between p-2 border border-gray-200 rounded">
+                  <span className="text-sm text-gray-900">KTP Image</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-600 text-white">
+                      ✓ Available
+                    </span>
+                    <button 
+                      onClick={() => setSelectedImage(approval.ktpImageUrl)}
+                      className="text-[#711330] hover:text-[#8b1538] text-sm"
+                    >
+                      View
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Selfie Image */}
+              {approval.selfieImageUrl && (
+                <div className="flex items-center justify-between p-2 border border-gray-200 rounded">
+                  <span className="text-sm text-gray-900">Selfie with KTP</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-600 text-white">
+                      ✓ Available
+                    </span>
+                    <button 
+                      onClick={() => setSelectedImage(approval.selfieImageUrl)}
+                      className="text-[#711330] hover:text-[#8b1538] text-sm"
+                    >
+                      View
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Store Icon */}
+              {approval.storeIcon && (
+                <div className="flex items-center justify-between p-2 border border-gray-200 rounded">
+                  <span className="text-sm text-gray-900">Store Icon</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-600 text-white">
+                      ✓ Available
+                    </span>
+                    <button 
+                      onClick={() => setSelectedImage(approval.storeIcon)}
+                      className="text-[#711330] hover:text-[#8b1538] text-sm"
+                    >
+                      View
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Store Banner */}
+              {approval.storeBanner && (
+                <div className="flex items-center justify-between p-2 border border-gray-200 rounded">
+                  <span className="text-sm text-gray-900">Store Banner</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-600 text-white">
+                      ✓ Available
+                    </span>
+                    <button 
+                      onClick={() => setSelectedImage(approval.storeBanner)}
+                      className="text-[#711330] hover:text-[#8b1538] text-sm"
+                    >
+                      View
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Documents */}
+              {approval.documents && approval.documents.length > 0 && approval.documents.map((doc, index) => (
+                <div key={index} className="flex items-center justify-between p-2 border border-gray-200 rounded">
                   <span className="text-sm text-gray-900">{doc.name}</span>
                   <div className="flex items-center space-x-2">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
@@ -213,35 +282,69 @@ export default function ApprovalsPage() {
                     }`}>
                       {doc.verified ? '✓ Verified' : '✗ Pending'}
                     </span>
-                    <button className="text-[#711330] hover:text-[#8b1538] text-sm">
+                    <button 
+                      onClick={() => doc.url && setSelectedImage(doc.url)}
+                      className="text-[#711330] hover:text-[#8b1538] text-sm"
+                    >
                       View
                     </button>
                   </div>
                 </div>
               ))}
+
+              {/* No documents message */}
+              {!approval.ktpImageUrl && !approval.selfieImageUrl && !approval.storeIcon && !approval.storeBanner && (!approval.documents || approval.documents.length === 0) && (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  No documents or images available
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Menu Items */}
-        <div className="mt-6">
-          <h4 className="text-sm font-medium text-gray-900 mb-3">Sample Menu Items</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {approval.menuItems.map((item, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-900">{item.name}</h5>
-                    <p className="text-xs text-gray-500 mt-1">{item.description}</p>
+        {approval.menuItems && approval.menuItems.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Menu Items ({approval.menuItems.length} items)</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {approval.menuItems.slice(0, 6).map((item, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-3">
+                  {/* Menu Image */}
+                  {item.image && (
+                    <div className="mb-3">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-24 object-cover rounded cursor-pointer hover:opacity-80"
+                        onClick={() => setSelectedImage(item.image)}
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h5 className="text-sm font-medium text-gray-900">{item.name}</h5>
+                      <p className="text-xs text-gray-500 mt-1">{item.description}</p>
+                      {item.category && (
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-xs text-gray-600 rounded">
+                          {item.category}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 ml-2">
+                      Rp {item.price.toLocaleString()}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium text-gray-900">
-                    Rp {item.price.toLocaleString()}
-                  </span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            {approval.menuItems.length > 6 && (
+              <p className="text-xs text-gray-500 mt-2">
+                And {approval.menuItems.length - 6} more items...
+              </p>
+            )}
           </div>
-        </div>
+        )}
       </div>
 
       <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
@@ -281,8 +384,30 @@ export default function ApprovalsPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-4xl mb-4">⚠️</div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Approvals</h3>
+        <p className="text-gray-500 mb-4">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#711330] hover:bg-[#8b1538]"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div>
+      {/* Image Modal */}
+      <ImageModal 
+        imageUrl={selectedImage} 
+        onClose={() => setSelectedImage(null)} 
+      />
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Seller Approvals</h1>
