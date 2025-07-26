@@ -108,7 +108,7 @@ export async function POST(request) {
 
     // Check if seller exists
     const sellersSnapshot = await db.collection('sellers')
-      .where('email', '==', email.toLowerCase())
+      .where('outletEmail', '==', email.toLowerCase())
       .get();
 
     if (sellersSnapshot.empty) {
