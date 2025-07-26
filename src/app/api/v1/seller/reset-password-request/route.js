@@ -24,7 +24,7 @@ async function sendResetOTPEmail(email, otp, name) {
     };
 
     // Create transporter
-    const transporter = nodemailer.createTransporter(emailConfig);
+    const transporter = nodemailer.createTransport(emailConfig);
 
     const mailOptions = {
       from: {
