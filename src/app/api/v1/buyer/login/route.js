@@ -32,7 +32,12 @@ export async function POST(request) {
 
     // Check if email is verified
     if (!buyerData.emailValidated) {
-      return withCORSHeaders(createErrorResponse('Email belum diverifikasi. Silakan verifikasi email Anda terlebih dahulu.', 401));
+      return withCORSHeaders(NextResponse.json({
+        success: false,
+        message: 'Email belum diverifikasi. Silakan verifikasi email Anda terlebih dahulu.',
+        userId: buyerDoc.id,
+        email: buyerData.email
+      }, { status: 401 }));
     }
 
     // Verify password
